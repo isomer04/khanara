@@ -2,6 +2,10 @@
 
 A modern home-cooked food marketplace connecting home cooks with food enthusiasts, specializing in Asian and Arabian cuisines.
 
+## Demo
+<img width="100%" alt="Khanara – Browse Cooks" src="https://github.com/user-attachments/assets/ae88b16c-18df-4d71-a9a0-0e13577270fd" />
+
+
 ## Overview
 
 Khanara is a full-stack web application that enables home cooks to showcase and sell their homemade dishes while giving customers access to authentic, home-cooked meals from their local community. The platform features real-time order tracking, in-app messaging, and a comprehensive review system.

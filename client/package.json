@@ -1,0 +1,56 @@
+{
+  "name": "khanara",
+  "version": "0.0.0",
+  "scripts": {
+    "ng": "ng",
+    "start": "ng serve --port 5444",
+    "build": "ng build",
+    "watch": "ng build --watch --configuration development",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "test:coverage": "vitest --run --coverage",
+    "test:ui": "vitest --ui",
+    "test:ci": "vitest --run --coverage"
+  },
+  "prettier": {
+    "printWidth": 100,
+    "singleQuote": true,
+    "overrides": [
+      {
+        "files": "*.html",
+        "options": {
+          "parser": "angular"
+        }
+      }
+    ]
+  },
+  "private": true,
+  "packageManager": "npm@11.6.2",
+  "dependencies": {
+    "@angular/common": "^21.0.0",
+    "@angular/compiler": "^21.0.0",
+    "@angular/core": "^21.0.0",
+    "@angular/forms": "^21.0.0",
+    "@angular/platform-browser": "^21.0.0",
+    "@angular/platform-browser-dynamic": "^21.0.0",
+    "@angular/router": "^21.0.0",
+    "@microsoft/signalr": "^10.0.0",
+    "@tailwindcss/postcss": "^4.1.18",
+    "rxjs": "~7.8.0",
+    "tailwindcss": "^4.1.18",
+    "tslib": "^2.3.0",
+    "zone.js": "^0.16.1"
+  },
+  "devDependencies": {
+    "@analogjs/vite-plugin-angular": "^2.5.0",
+    "@angular/build": "^21.0.4",
+    "@angular/cli": "^21.0.4",
+    "@angular/compiler-cli": "^21.0.0",
+    "@vitest/coverage-v8": "^4.1.5",
+    "@vitest/ui": "^4.1.5",
+    "daisyui": "^5.5.14",
+    "jsdom": "^27.1.0",
+    "typescript": "~5.9.2",
+    "vitest": "^4.0.8"
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "ConnectionStrings": {
+    "DefaultConnection": "Data source=khanara.db"
+  },
+  "TokenKey": "REPLACE_WITH_A_RANDOM_STRING_AT_LEAST_64_CHARS_LONG",
+  "Jwt": {
+    "Issuer": "https://localhost:5001",
+    "Audience": "https://localhost:5444"
+  },
+  "CloudinarySettings": {
+    "CloudName": "REPLACE_WITH_YOUR_CLOUDINARY_CLOUD_NAME",
+    "ApiKey": "REPLACE_WITH_YOUR_CLOUDINARY_API_KEY",
+    "ApiSecret": "REPLACE_WITH_YOUR_CLOUDINARY_API_SECRET"
+  },
+  "Stripe": {
+    "SecretKey": "sk_test_REPLACE_WITH_YOUR_STRIPE_TEST_SECRET_KEY",
+    "WebhookSecret": "whsec_REPLACE_WITH_STRIPE_CLI_WEBHOOK_SECRET",
+    "SuccessUrl": "https://localhost:5444/payment/success?orderId={0}",
+    "CancelUrl": "https://localhost:5444/orders/{0}"
+  }
+}

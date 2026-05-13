@@ -1,0 +1,129 @@
+<div class="container mx-auto pt-24 px-4 max-w-2xl">
+  <h1 class="text-3xl font-bold mb-8">
+    {{ isEditMode() ? 'Edit dish' : 'New dish' }}
+  </h1>
+
+  @if (loading() && !isEditMode()) {
+    <div class="flex justify-center py-20">
+      <span class="loading loading-spinner loading-lg"></span>
+    </div>
+  } @else {
+    <div class="card bg-base-100 shadow-md p-8 mb-6">
+      <div class="form-control mb-6">
+        <label class="block mb-2">
+          <span class="label-text font-semibold">Name *</span>
+        </label>
+        <input [(ngModel)]="form.name" name="name" type="text" class="input input-bordered w-full" maxlength="100" />
+      </div>
+
+      <div class="form-control mb-6">
+        <label class="block mb-2">
+          <span class="label-text font-semibold">Description</span>
+        </label>
+        <textarea [(ngModel)]="form.description" name="description" class="textarea textarea-bordered w-full" rows="3" maxlength="500"></textarea>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4 mb-4">
+        <div class="form-control">
+          <label class="block mb-2">
+            <span class="label-text font-semibold">Price ($) *</span>
+          </label>
+          <input [(ngModel)]="form.price" name="price" type="number" min="0.01" step="0.01" class="input input-bordered w-full" />
+        </div>
+        <div class="form-control">
+          <label class="block mb-2">
+            <span class="label-text font-semibold">Cuisine *</span>
+          </label>
+          <select [(ngModel)]="form.cuisineTag" name="cuisineTag" class="select select-bordered w-full">
+            @for (tag of cuisineTags; track tag.value) {
+              <option [value]="tag.value">{{ tag.label }}</option>
+            }
+          </select>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4 mb-4">
+        <div class="form-control">
+          <label class="block mb-2">
+            <span class="label-text font-semibold">Portions per batch *</span>
+          </label>
+          <input [(ngModel)]="form.portionsPerBatch" name="portionsPerBatch" type="number" min="1" class="input input-bordered w-full" />
+        </div>
+        @if (isEditMode()) {
+          <div class="form-control">
+            <label class="block mb-2">
+              <span class="label-text font-semibold">Portions remaining today</span>
+            </label>
+            <input [(ngModel)]="form.portionsRemainingToday" name="portionsRemainingToday" type="number" min="0" class="input input-bordered w-full" />
+          </div>
+        }
+      </div>
+
+      <div class="form-control mb-4">
+        <label class="block mb-2">
+          <span class="label-text font-semibold">Dietary info</span>
+        </label>
+        <div class="flex flex-wrap gap-2">
+          @for (tag of dietaryTagOptions; track tag.flag) {
+            <button
+              type="button"
+              class="badge cursor-pointer"
+              [class.badge-primary]="hasDietaryFlag(tag.flag)"
+              [class.badge-outline]="!hasDietaryFlag(tag.flag)"
+              (click)="toggleDietaryFlag(tag.flag)"
+            >
+              {{ tag.label }}
+            </button>
+          }
+        </div>
+      </div>
+
+      @if (isEditMode()) {
+        <div class="form-control mb-6">
+          <label class="label cursor-pointer justify-start gap-3">
+            <input type="checkbox" class="toggle toggle-primary" [(ngModel)]="form.isAvailable" name="isAvailable" />
+            <span class="label-text font-semibold">Available for ordering</span>
+          </label>
+        </div>
+      }
+
+      <button class="btn btn-primary w-full" (click)="submit()" [disabled]="loading()">
+        @if (loading()) {
+          <span class="loading loading-spinner"></span>
+        }
+        {{ isEditMode() ? 'Save changes' : 'Create dish' }}
+      </button>
+    </div>
+
+    @if (dishId()) {
+      <div class="card bg-base-100 shadow-md p-6">
+        <h2 class="text-xl font-semibold mb-4">Photos</h2>
+
+        @if (photos().length > 0) {
+          <div class="flex flex-wrap gap-3 mb-4">
+            @for (photo of photos(); track photo.id) {
+              <div class="relative w-24 h-24">
+                <img
+                  [ngSrc]="photo.url"
+                  alt="dish photo"
+                  width="96"
+                  height="96"
+                  class="w-full h-full object-cover rounded-lg"
+                />
+                @if (photo.isMain) {
+                  <span class="absolute bottom-0 left-0 right-0 text-center text-xs bg-primary text-white rounded-b-lg">Main</span>
+                }
+                <button
+                  class="absolute top-1 right-1 btn btn-circle btn-xs btn-error"
+                  (click)="deletePhoto(photo.id)"
+                >✕</button>
+              </div>
+            }
+          </div>
+        }
+
+        <app-image-upload (uploadFile)="onUploadPhoto($event)" [loading]="photoUploading()" />
+      </div>
+    }
+  }
+</div>

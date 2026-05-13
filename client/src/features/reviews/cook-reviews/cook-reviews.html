@@ -1,0 +1,71 @@
+<div class="mt-10">
+  <h2 class="text-2xl font-semibold mb-4">Reviews</h2>
+
+  @if (loading()) {
+    <div class="flex justify-center py-6">
+      <span class="loading loading-spinner loading-md"></span>
+    </div>
+  } @else {
+    @if (reviewCount === 0) {
+      <p class="text-gray-500">No reviews yet.</p>
+    } @else {
+      <!-- Average rating summary -->
+      <div class="flex items-center gap-3 mb-5">
+        <div class="flex gap-0.5">
+          @for (n of filledStars(Math.round(averageRating)); track n) {
+            <span class="text-yellow-400 text-xl">★</span>
+          }
+          @for (n of emptyStars(Math.round(averageRating)); track n) {
+            <span class="text-gray-300 text-xl">★</span>
+          }
+        </div>
+        <span class="font-bold text-lg">{{ averageRating.toFixed(1) }}</span>
+        <span class="text-gray-500 text-sm">· {{ reviewCount }} review{{ reviewCount !== 1 ? 's' : '' }}</span>
+      </div>
+
+      <!-- Review list -->
+      <div class="flex flex-col gap-4">
+        @for (review of reviews(); track review.id) {
+          <div class="card bg-base-100 shadow-sm border border-base-200">
+            <div class="card-body p-4">
+              <div class="flex items-center justify-between mb-1">
+                <span class="font-semibold">{{ review.authorDisplayName }}</span>
+                <span class="text-xs text-gray-400">{{ review.createdAt | date: 'MMM d, y' }}</span>
+              </div>
+              <div class="flex gap-0.5 mb-2">
+                @for (n of filledStars(review.rating); track n) {
+                  <span class="text-yellow-400">★</span>
+                }
+                @for (n of emptyStars(review.rating); track n) {
+                  <span class="text-gray-300">★</span>
+                }
+              </div>
+              @if (review.comment) {
+                <p class="text-sm text-gray-700">{{ review.comment }}</p>
+              }
+              @if (review.cookReply) {
+                <div class="bg-base-200 rounded-lg p-3 mt-3">
+                  <p class="text-xs text-gray-500 mb-1">Cook's reply · {{ review.cookRepliedAt | date: 'MMM d, y' }}</p>
+                  <p class="text-sm">{{ review.cookReply }}</p>
+                </div>
+              }
+            </div>
+          </div>
+        }
+      </div>
+
+      @if (hasMore) {
+        <button
+          class="btn btn-outline w-full mt-4"
+          (click)="loadMore()"
+          [disabled]="loadingMore()"
+        >
+          @if (loadingMore()) {
+            <span class="loading loading-spinner loading-sm"></span>
+          }
+          Load more reviews
+        </button>
+      }
+    }
+  }
+</div>

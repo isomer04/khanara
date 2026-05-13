@@ -1,0 +1,186 @@
+<div class="py-10 px-0">
+
+  <!-- Page header and Filters -->
+  <div class="mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4">
+    <div>
+      <h1 class="text-4xl font-bold" style="font-family: var(--font-display)">Browse Cooks</h1>
+      <p class="text-base-content/55 mt-1.5 text-sm">{{ cooks().length }} cooks available in your area</p>
+    </div>
+    
+    <div class="form-control w-full sm:max-w-xs">
+      <div class="join">
+        <input
+          type="text"
+          placeholder="Filter by Zip Code"
+          aria-label="Filter by Zip Code"
+          class="input input-bordered join-item w-full"
+          [ngModel]="zipCode()"
+          (ngModelChange)="zipCode.set($event)"
+          (keyup.enter)="onZipCodeChange()"
+          maxlength="5"
+        />
+        <button class="btn btn-primary join-item" (click)="onZipCodeChange()">
+          Search
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cuisine chip filter -->
+  <div class="mb-6">
+    <!-- Scrollable container with navigation arrows -->
+    <div class="relative group">
+      <!-- Left Arrow Button (Desktop only) -->
+      @if (showLeftArrow()) {
+        <button
+          class="absolute left-0 top-1/2 -translate-y-1/2 z-20 
+                 bg-base-100 shadow-lg rounded-full p-2 
+                 hidden md:flex items-center justify-center
+                 hover:bg-base-200 transition-all duration-200
+                 border border-base-300
+                 opacity-0 group-hover:opacity-100"
+          (click)="scrollLeft()"
+          aria-label="Scroll left to see more cuisines"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
+            <path fill-rule="evenodd" d="M7.72 12.53a.75.75 0 0 1 0-1.06l7.5-7.5a.75.75 0 1 1 1.06 1.06L9.31 12l6.97 6.97a.75.75 0 1 1-1.06 1.06l-7.5-7.5Z" clip-rule="evenodd" />
+          </svg>
+        </button>
+      }
+      
+      <!-- Left fade indicator -->
+      <div class="absolute left-0 top-0 bottom-2 w-12 bg-gradient-to-r from-base-100 to-transparent pointer-events-none z-10 hidden md:block"
+           [class.opacity-0]="!showLeftArrow()"></div>
+      
+      <!-- Scrollable buttons -->
+      <div 
+        #filterContainer
+        class="flex gap-2 pb-2 overflow-x-auto scroll-smooth scrollbar-thin scrollbar-thumb-base-300 scrollbar-track-transparent hover:scrollbar-thumb-base-content/20 px-1"
+        (scroll)="onScroll()"
+      >
+        <button
+          class="btn btn-sm rounded-full shrink-0 transition-colors"
+          [class.btn-primary]="selectedCuisine() === undefined"
+          [class.btn-ghost]="selectedCuisine() !== undefined"
+          (click)="onCuisineChange('')"
+        >
+          All cuisines
+        </button>
+        @for (tag of cuisineTags; track tag.value) {
+          <button
+            class="btn btn-sm rounded-full shrink-0 transition-colors"
+            [class.btn-primary]="selectedCuisine() === tag.value"
+            [class.btn-ghost]="selectedCuisine() !== tag.value"
+            (click)="onCuisineChange(tag.value.toString())"
+          >
+            {{ tag.label }}
+          </button>
+        }
+      </div>
+      
+      <!-- Right fade indicator -->
+      <div class="absolute right-0 top-0 bottom-2 w-12 bg-gradient-to-l from-base-100 to-transparent pointer-events-none z-10 hidden md:block"
+           [class.opacity-0]="!showRightArrow()"></div>
+      
+      <!-- Right Arrow Button (Desktop only) -->
+      @if (showRightArrow()) {
+        <button
+          class="absolute right-0 top-1/2 -translate-y-1/2 z-20 
+                 bg-base-100 shadow-lg rounded-full p-2 
+                 hidden md:flex items-center justify-center
+                 hover:bg-base-200 transition-all duration-200
+                 border border-base-300
+                 opacity-0 group-hover:opacity-100"
+          (click)="scrollRight()"
+          aria-label="Scroll right to see more cuisines"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
+            <path fill-rule="evenodd" d="M16.28 11.47a.75.75 0 0 1 0 1.06l-7.5 7.5a.75.75 0 0 1-1.06-1.06L14.69 12 7.72 5.03a.75.75 0 0 1 1.06-1.06l7.5 7.5Z" clip-rule="evenodd" />
+          </svg>
+        </button>
+      }
+    </div>
+    
+    <!-- Scroll indicator hint for mobile -->
+    <div class="text-xs text-base-content/40 text-center md:hidden mt-1">
+      ← Swipe to see more cuisines →
+    </div>
+  </div>
+
+  <!-- Results -->
+  @if (loading()) {
+    <div class="flex justify-center py-24">
+      <span class="loading loading-spinner loading-lg text-primary"></span>
+    </div>
+  } @else if (cooks().length === 0) {
+    <div class="text-center py-24">
+      <div class="text-5xl mb-4">🍽</div>
+      @if (selectedCuisine() !== undefined) {
+        <p class="text-base-content/50 text-lg">No cooks found for this cuisine yet.</p>
+        <button class="btn btn-ghost btn-sm mt-4" (click)="onCuisineChange('')">Clear filter</button>
+      } @else {
+        <p class="text-base-content/50 text-lg">No cooks found yet.</p>
+      }
+    </div>
+  } @else {
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      @for (cook of cooks(); track cook.id) {
+        <div class="group rounded-2xl overflow-hidden bg-base-100 shadow-sm hover:shadow-xl transition-all duration-300 relative">
+          <!-- Favorite toggle -->
+          <div class="absolute top-3 right-3 z-10">
+            <app-favorite-button [cookId]="cook.id" />
+          </div>
+          <a [routerLink]="['/cooks', cook.id]">
+            <!-- Image -->
+            <div class="relative h-52 overflow-hidden bg-base-200">
+              @if (cook.kitchenPhotoUrl) {
+                <img
+                  [ngSrc]="getMainPhoto(cook)"
+                  [alt]="cook.kitchenName"
+                  fill
+                  disableOptimizedSrcset
+                  class="object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+              } @else {
+                <div class="absolute inset-0 flex items-center justify-center">
+                  <div class="text-center px-4">
+                    <div class="text-3xl mb-2">🍳</div>
+                    <p class="font-semibold text-base-content/70" style="font-family: var(--font-display)">{{ cook.kitchenName }}</p>
+                  </div>
+                </div>
+              }
+              @if (cook.isAcceptingOrders) {
+                <span class="absolute bottom-3 left-3 badge badge-success badge-sm shadow">Open now</span>
+              } @else {
+                <span class="absolute bottom-3 left-3 badge badge-ghost badge-sm shadow">Closed</span>
+              }
+            </div>
+            <!-- Card body -->
+            <div class="p-4">
+              <h2 class="font-semibold text-base leading-snug" style="font-family: var(--font-display)">{{ cook.kitchenName }}</h2>
+              <p class="text-sm text-base-content/45 mt-0.5">by {{ cook.ownerDisplayName }}</p>
+              <!-- Rating -->
+              @if (cook.reviewCount > 0) {
+                <div class="flex items-center gap-1.5 mt-2 text-sm">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-4 text-amber-500">
+                    <path fill-rule="evenodd" d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.006 5.404.434c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.434 2.082-5.005Z" clip-rule="evenodd" />
+                  </svg>
+                  <span class="font-medium">{{ cook.averageRating.toFixed(1) }}</span>
+                  <span class="text-base-content/40">({{ cook.reviewCount }})</span>
+                </div>
+              }
+              <!-- Cuisine tags -->
+              <div class="flex flex-wrap gap-1 mt-2.5">
+                @for (tag of cook.cuisineTags; track tag) {
+                  <span class="badge badge-outline badge-xs rounded-full text-base-content/55">{{ getCuisineLabel(tag) }}</span>
+                }
+              </div>
+              <!-- Dish count -->
+              <p class="text-xs text-base-content/35 mt-2.5">{{ cook.dishes.length }} dish{{ cook.dishes.length !== 1 ? 'es' : '' }}</p>
+            </div>
+          </a>
+        </div>
+      }
+    </div>
+  }
+</div>

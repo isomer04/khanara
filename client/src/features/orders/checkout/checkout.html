@@ -1,0 +1,121 @@
+<div class="container mx-auto pt-24 px-4 max-w-2xl">
+  <h1 class="text-3xl font-bold mb-6">Checkout</h1>
+
+  @if (cartService.itemCount() === 0) {
+    <div class="text-center py-20">
+      <p class="text-gray-500 mb-4">Your cart is empty.</p>
+      <a routerLink="/cooks" class="btn btn-primary">Browse cooks</a>
+    </div>
+  } @else {
+    <!-- Order summary -->
+    <div class="card bg-base-100 shadow-md mb-6">
+      <div class="card-body">
+        <h2 class="card-title text-lg mb-3">Order summary</h2>
+        @for (item of cartService.items(); track item.dishId) {
+          <div class="flex items-center justify-between py-2 border-b border-base-200 last:border-0">
+            <div>
+              <p class="font-medium">{{ item.dishName }}</p>
+              <p class="text-sm text-gray-500">{{ item.price | currency }} each</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="badge badge-ghost">× {{ item.quantity }}</span>
+              <span class="font-semibold w-20 text-right">{{ item.price * item.quantity | currency }}</span>
+            </div>
+          </div>
+        }
+        <div class="flex justify-between items-center mt-3 pt-2 font-bold text-lg">
+          <span>Total</span>
+          <span class="text-primary">{{ cartService.total() | currency }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Fulfillment type -->
+    <div class="card bg-base-100 shadow-md mb-6">
+      <div class="card-body">
+        <h2 class="card-title text-lg mb-3">How would you like to receive your order?</h2>
+        <div class="flex gap-4">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input
+              type="radio"
+              name="fulfillment"
+              class="radio radio-primary"
+              [checked]="fulfillmentType() === FulfillmentType.Pickup"
+              (change)="setFulfillment(FulfillmentType.Pickup)"
+            />
+            <span>Pickup</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input
+              type="radio"
+              name="fulfillment"
+              class="radio radio-primary"
+              [checked]="fulfillmentType() === FulfillmentType.Delivery"
+              (change)="setFulfillment(FulfillmentType.Delivery)"
+            />
+            <span>Delivery</span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Notes -->
+    <div class="card bg-base-100 shadow-md mb-6">
+      <div class="card-body">
+        <h2 class="card-title text-lg mb-3">Notes for the cook <span class="text-gray-400 font-normal text-sm">(optional)</span></h2>
+        <textarea
+          class="textarea textarea-bordered w-full"
+          rows="3"
+          placeholder="Allergies, special requests..."
+          [value]="notes()"
+          (input)="notes.set($any($event.target).value)"
+        ></textarea>
+      </div>
+    </div>
+
+    <!-- Payment method -->
+    <div class="card bg-base-100 shadow-md mb-6">
+      <div class="card-body">
+        <h2 class="card-title text-lg mb-3">How would you like to pay?</h2>
+        <div class="flex flex-wrap gap-4">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input
+              type="radio"
+              name="payment"
+              class="radio radio-primary"
+              [checked]="paymentMethod() === PaymentMethod.Cash"
+              (change)="setPaymentMethod(PaymentMethod.Cash)"
+            />
+            <span>Cash on {{ fulfillmentType() === FulfillmentType.Pickup ? 'pickup' : 'delivery' }}</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-not-allowed opacity-60" title="Card payments will be available soon.">
+            <input
+              type="radio"
+              name="payment"
+              class="radio radio-primary"
+              disabled
+            />
+            <span>Card (Stripe)</span>
+            <span class="badge badge-warning badge-sm">Coming soon</span>
+          </label>
+        </div>
+        <p class="text-sm text-gray-500 mt-2">
+          Card payments are coming soon. For now, please pay in cash on {{ fulfillmentType() === FulfillmentType.Pickup ? 'pickup' : 'delivery' }}.
+        </p>
+      </div>
+    </div>
+
+    <button
+      class="btn btn-primary btn-lg w-full mb-8"
+      (click)="placeOrder()"
+      [disabled]="submitting()"
+    >
+      @if (submitting()) {
+        <span class="loading loading-spinner"></span>
+        Placing order...
+      } @else {
+        Place order · {{ cartService.total() | currency }}
+      }
+    </button>
+  }
+</div>

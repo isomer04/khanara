@@ -1,0 +1,264 @@
+// ViewEncapsulation.None — all selectors are global but scoped under app-register
+
+// ── Page background ───────────────────────────────────────────────────────
+app-register .register-page {
+  background-color: #1a0f00;
+}
+
+// ── Ambient radial glows ──────────────────────────────────────────────────
+app-register .glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+}
+
+app-register .glow-1 {
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, oklch(70% 0.158 65 / 0.35), transparent 70%);
+  top: -150px;
+  right: -100px;
+  animation: kh-drift1 12s ease-in-out infinite alternate;
+}
+
+app-register .glow-2 {
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, oklch(55% 0.175 35 / 0.25), transparent 70%);
+  bottom: -100px;
+  left: -80px;
+  animation: kh-drift2 15s ease-in-out infinite alternate;
+}
+
+app-register .glow-3 {
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, oklch(62% 0.15 55 / 0.15), transparent 70%);
+  top: 40%;
+  left: 30%;
+  animation: kh-drift3 18s ease-in-out infinite alternate;
+}
+
+@keyframes kh-drift1 {
+  from { transform: translate(0, 0) scale(1); }
+  to   { transform: translate(40px, 30px) scale(1.1); }
+}
+@keyframes kh-drift2 {
+  from { transform: translate(0, 0) scale(1); }
+  to   { transform: translate(-30px, -40px) scale(1.08); }
+}
+@keyframes kh-drift3 {
+  from { transform: translate(0, 0); }
+  to   { transform: translate(20px, -20px); }
+}
+
+// ── Scattered emoji field ─────────────────────────────────────────────────
+app-register .emoji-field {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+app-register .emoji-item {
+  position: absolute;
+  user-select: none;
+  filter: blur(0.5px);
+  animation: kh-float 8s ease-in-out infinite alternate;
+}
+
+@keyframes kh-float {
+  from { transform: translateY(0px); }
+  to   { transform: translateY(-12px); }
+}
+
+// ── Glass card ────────────────────────────────────────────────────────────
+app-register .glass-card {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1.5rem;
+  padding: 2.5rem;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.04) inset,
+    0 32px 64px rgba(0, 0, 0, 0.5),
+    0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+// ── Step pills ────────────────────────────────────────────────────────────
+app-register .step-pill {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.4);
+  border: 1px solid rgba(255,255,255,0.1);
+  transition: all 0.3s ease;
+
+  &.active {
+    background: oklch(70% 0.158 65);
+    color: oklch(15% 0.03 65);
+    border-color: transparent;
+    box-shadow: 0 0 12px oklch(70% 0.158 65 / 0.5);
+  }
+}
+
+app-register .step-connector {
+  width: 2rem;
+  height: 1px;
+  background: rgba(255,255,255,0.15);
+}
+
+// ── Glass field group + text-input overrides ──────────────────────────────
+app-register .glass-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  background: rgba(0,0,0,0.25);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 1rem;
+  padding: 1rem;
+
+  // ── Floating label span (the visible label text) ──────────────────
+  .floating-label span {
+    color: rgba(255, 255, 255, 0.55) !important;
+    background: transparent !important;
+    // When the label floats up it needs a background so it doesn't bleed
+    // into the input border — use a dark pill instead of white
+    padding: 0 0.25rem;
+  }
+
+  // When the input has content the label floats — give it a dark bg
+  .floating-label:has(input:not(:placeholder-shown)) span,
+  .floating-label:has(input:focus) span {
+    background: #2a1500 !important;
+    color: oklch(70% 0.158 65) !important;
+    border-radius: 0.25rem;
+  }
+
+  // ── Input field ───────────────────────────────────────────────────
+  .input {
+    background: rgba(255, 255, 255, 0.07) !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+    color: rgba(255, 255, 255, 0.95) !important;
+    border-radius: 0.625rem !important;
+
+    &::placeholder {
+      color: rgba(255, 255, 255, 0.3) !important;
+    }
+
+    &:focus {
+      border-color: oklch(70% 0.158 65) !important;
+      background: rgba(255, 255, 255, 0.1) !important;
+      outline: none !important;
+      box-shadow: 0 0 0 3px oklch(70% 0.158 65 / 0.18) !important;
+    }
+
+    &.input-success {
+      border-color: oklch(60% 0.15 145 / 0.7) !important;
+    }
+
+    &.input-error {
+      border-color: oklch(60% 0.20 25 / 0.8) !important;
+    }
+  }
+
+  // ── Validation hint text ──────────────────────────────────────────
+  .validation-hint {
+    color: oklch(72% 0.18 30) !important;
+  }
+
+  // ── Date input — browser chrome is dark on dark, force light ─────
+  input[type="date"] {
+    color-scheme: dark;
+  }
+}
+
+// ── Primary action button ─────────────────────────────────────────────────
+app-register .auth-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  height: 3rem;
+  border-radius: 9999px;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  background: oklch(70% 0.158 65);
+  color: oklch(15% 0.03 65);
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+
+  &:hover:not(:disabled) {
+    background: oklch(74% 0.158 65);
+    box-shadow: 0 4px 20px oklch(70% 0.158 65 / 0.4);
+    transform: translateY(-1px);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  &:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+}
+
+// ── Ghost action button ───────────────────────────────────────────────────
+app-register .auth-btn-ghost {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  height: 3rem;
+  border-radius: 9999px;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  background: rgba(255,255,255,0.07);
+  color: rgba(255,255,255,0.7);
+  border: 1px solid rgba(255,255,255,0.12);
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: rgba(255,255,255,0.12);
+    color: white;
+  }
+}
+
+// ── Gender chips ──────────────────────────────────────────────────────────
+app-register .gender-chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1.25rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  background: rgba(255,255,255,0.07);
+  color: rgba(255,255,255,0.5);
+  border: 1px solid rgba(255,255,255,0.1);
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: rgba(255,255,255,0.12);
+    color: rgba(255,255,255,0.8);
+  }
+
+  &.selected {
+    background: oklch(70% 0.158 65 / 0.2);
+    color: oklch(78% 0.158 65);
+    border-color: oklch(70% 0.158 65 / 0.5);
+  }
+}

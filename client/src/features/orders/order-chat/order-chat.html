@@ -1,0 +1,74 @@
+<div class="container mx-auto pt-24 px-4 max-w-2xl flex flex-col" style="height: calc(100vh - 4rem)">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-4">
+    <div class="flex items-center gap-3">
+      <a [routerLink]="['/orders', orderId]" class="btn btn-ghost btn-sm">← Order #{{ orderId }}</a>
+      <h1 class="text-xl font-bold">Chat</h1>
+    </div>
+
+    <!-- Presence badges -->
+    @if (presence()) {
+      <div class="flex gap-2 text-xs">
+        <span class="badge" [class]="presence()!.cookOnline ? 'badge-success' : 'badge-ghost'">
+          Cook {{ presence()!.cookOnline ? 'online' : 'offline' }}
+        </span>
+        <span class="badge" [class]="presence()!.eaterOnline ? 'badge-success' : 'badge-ghost'">
+          Eater {{ presence()!.eaterOnline ? 'online' : 'offline' }}
+        </span>
+      </div>
+    }
+  </div>
+
+  <!-- Messages -->
+  <div class="flex-1 overflow-y-auto space-y-3 mb-4 pr-1">
+    @if (messages().length === 0) {
+      <p class="text-center text-gray-400 py-10 text-sm">No messages yet. Say hello!</p>
+    }
+    @for (msg of messages(); track msg.id) {
+      <div class="chat" [class]="msg.senderId === currentUserId ? 'chat-end' : 'chat-start'">
+        <div class="chat-header text-xs text-gray-500 mb-1">
+          {{ msg.senderDisplayName }}
+          <time class="ml-1">{{ msg.sentAt | date: 'h:mm a' }}</time>
+        </div>
+        <div
+          class="chat-bubble"
+          [class]="msg.senderId === currentUserId ? 'chat-bubble-primary' : ''"
+        >
+          {{ msg.content }}
+        </div>
+      </div>
+    }
+  </div>
+
+  <!-- Input -->
+  @if (isClosed()) {
+    <div class="alert alert-warning text-sm mb-2">
+      This order is closed — messaging is disabled.
+    </div>
+  } @else {
+    <div class="flex gap-2 pb-4">
+      <input
+        type="text"
+        class="input input-bordered flex-1"
+        placeholder="Type a message..."
+        [value]="newMessage()"
+        (input)="newMessage.set($any($event.target).value)"
+        (keydown.enter)="send()"
+        [disabled]="sending()"
+      />
+      <button
+        class="btn btn-primary"
+        (click)="send()"
+        [disabled]="!newMessage().trim() || sending()"
+      >
+        @if (sending()) {
+          <span class="loading loading-spinner loading-sm"></span>
+        } @else {
+          Send
+        }
+      </button>
+    </div>
+  }
+
+</div>

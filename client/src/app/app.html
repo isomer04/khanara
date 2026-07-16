@@ -1,0 +1,12 @@
+<app-nav />
+
+<div
+  [class.mt-16]="router.url !== '/'"
+  [class.container]="router.url !== '/'"
+  [class.mx-auto]="router.url !== '/'"
+  [class.px-4]="router.url !== '/'"
+>
+  <router-outlet />
+</div>
+
+<app-confirm-dialog />

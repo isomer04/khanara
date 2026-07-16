@@ -1,0 +1,164 @@
+<div>
+  @if (!registerMode()) {
+
+    <!-- ── Hero ──────────────────────────────────────────────────── -->
+    <div
+      class="relative min-h-[72vh] flex flex-col items-center justify-center text-center overflow-hidden"
+      style="background: linear-gradient(150deg, #0f0400 0%, #3b1000 30%, #7c2d00 60%, #c45c12 100%)"
+    >
+      <!-- Subtle noise texture overlay -->
+      <div class="absolute inset-0 opacity-20"
+           style="background-image: url('data:image/svg+xml,%3Csvg width=\'200\' height=\'200\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noise\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.9\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'200\' height=\'200\' filter=\'url(%23noise)\' opacity=\'1\'/%3E%3C/svg%3E')">
+      </div>
+
+      <!-- Content — shifted down past the fixed nav -->
+      <div class="relative z-10 px-6 pt-20 pb-16 max-w-3xl mx-auto">
+        <!-- Eyebrow pill -->
+        <div class="inline-flex items-center gap-2 bg-white/10 border border-white/20 text-white/80 text-sm px-4 py-1.5 rounded-full mb-8 backdrop-blur-sm">
+          <span class="size-2 rounded-full bg-green-400 animate-pulse"></span>
+          Home-cooked meals from your community
+        </div>
+
+        <!-- Headline -->
+        <h1
+          class="text-5xl md:text-7xl font-bold text-white leading-[1.1] mb-6"
+          style="font-family: var(--font-display)"
+        >
+          Authentic Asian &amp;<br/>Arabian Cooking
+        </h1>
+
+        <!-- Sub-copy -->
+        <p class="text-white/65 text-lg md:text-xl max-w-lg mx-auto mb-10 leading-relaxed">
+          Order handmade meals from passionate home cooks in your neighborhood.
+        </p>
+
+        <!-- CTAs -->
+        <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+          <a routerLink="/cooks" class="btn btn-primary btn-lg rounded-full px-10 shadow-xl shadow-amber-900/40">
+            Browse Cooks
+          </a>
+          @if (!accountService.currentUser()) {
+            <button
+              (click)="showRegister(true)"
+              class="btn btn-lg rounded-full px-10 bg-white/10 border border-white/30 text-white hover:bg-white/20 backdrop-blur-sm"
+            >
+              Become a Cook
+            </button>
+          }
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Cuisine scroll bar ─────────────────────────────────────── -->
+    <div class="border-b border-base-200 bg-base-100">
+      <div class="max-w-7xl mx-auto px-6">
+        <div class="flex gap-2 py-3 overflow-x-auto" style="scrollbar-width: none">
+          <a routerLink="/cooks" class="btn btn-sm rounded-full shrink-0 btn-ghost font-medium">🍽 All Cuisines</a>
+          <a routerLink="/cooks" class="btn btn-sm rounded-full shrink-0 btn-ghost">🍛 Bengali</a>
+          <a routerLink="/cooks" class="btn btn-sm rounded-full shrink-0 btn-ghost">🌶️ Indian</a>
+          <a routerLink="/cooks" class="btn btn-sm rounded-full shrink-0 btn-ghost">🫓 Pakistani</a>
+          <a routerLink="/cooks" class="btn btn-sm rounded-full shrink-0 btn-ghost">🧆 Lebanese</a>
+          <a routerLink="/cooks" class="btn btn-sm rounded-full shrink-0 btn-ghost">🥙 Turkish</a>
+          <a routerLink="/cooks" class="btn btn-sm rounded-full shrink-0 btn-ghost">🍜 Thai</a>
+          <a routerLink="/cooks" class="btn btn-sm rounded-full shrink-0 btn-ghost">🥟 Chinese</a>
+          <a routerLink="/cooks" class="btn btn-sm rounded-full shrink-0 btn-ghost">🍱 Korean</a>
+          <a routerLink="/cooks" class="btn btn-sm rounded-full shrink-0 btn-ghost">🍲 Vietnamese</a>
+          <a routerLink="/cooks" class="btn btn-sm rounded-full shrink-0 btn-ghost">🍗 Filipino</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Popular on Khanara ─────────────────────────────────────── -->
+    @if (popularCooks().length > 0) {
+      <section class="max-w-7xl mx-auto px-6 py-14">
+        <div class="flex items-end justify-between mb-8">
+          <div>
+            <p class="text-sm font-semibold text-primary uppercase tracking-widest mb-1">Top rated</p>
+            <h2 class="text-3xl font-bold text-base-content" style="font-family: var(--font-display)">Popular on Khanara</h2>
+          </div>
+          <a routerLink="/cooks" class="text-sm font-medium text-primary hover:underline underline-offset-2">See all →</a>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          @for (cook of popularCooks(); track cook.id; let i = $index) {
+            <app-cook-card
+              [cook]="cook"
+              [showRating]="true"
+              [priority]="i === 0"
+            />
+          }
+        </div>
+      </section>
+    }
+
+    <!-- ── New on Khanara — deferred until viewport ───────────────── -->
+    @defer (on viewport) {
+      @if (newCooks().length > 0) {
+        <section class="bg-base-200/60 py-14">
+          <div class="max-w-7xl mx-auto px-6">
+            <div class="flex items-end justify-between mb-8">
+              <div>
+                <p class="text-sm font-semibold text-primary uppercase tracking-widest mb-1">Just joined</p>
+                <h2 class="text-3xl font-bold text-base-content" style="font-family: var(--font-display)">New on Khanara</h2>
+              </div>
+              <a routerLink="/cooks" class="text-sm font-medium text-primary hover:underline underline-offset-2">See all →</a>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              @for (cook of newCooks(); track cook.id) {
+                <app-cook-card
+                  [cook]="cook"
+                  [showNewBadge]="true"
+                />
+              }
+            </div>
+          </div>
+        </section>
+      }
+    } @placeholder {
+      <div class="h-64 bg-base-200/60"></div>
+    } @loading (minimum 200ms) {
+      <div class="flex justify-center py-20 bg-base-200/60">
+        <span class="loading loading-spinner loading-lg text-primary"></span>
+      </div>
+    }
+
+    <!-- ── Why Khanara — deferred until viewport ──────────────────── -->
+    @defer (on viewport) {
+      <section class="max-w-7xl mx-auto px-6 py-20">
+        <div class="text-center mb-12">
+          <h2 class="text-3xl font-bold" style="font-family: var(--font-display)">Why Khanara?</h2>
+          <p class="text-base-content/60 mt-3 max-w-md mx-auto">The food your family grew up with, made by someone who grew up with it too.</p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div class="text-center px-4">
+            <div class="text-4xl mb-4">🏠</div>
+            <h3 class="font-semibold text-lg mb-2">Real home cooking</h3>
+            <p class="text-base-content/55 text-sm leading-relaxed">Every dish is made fresh by a home cook in your community — not a restaurant, not a factory.</p>
+          </div>
+          <div class="text-center px-4">
+            <div class="text-4xl mb-4">🌍</div>
+            <h3 class="font-semibold text-lg mb-2">19 cuisines &amp; counting</h3>
+            <p class="text-base-content/55 text-sm leading-relaxed">Bengali, Lebanese, Thai, Korean, and more. Explore the full breadth of Asian and Arabian flavors.</p>
+          </div>
+          <div class="text-center px-4">
+            <div class="text-4xl mb-4">⭐</div>
+            <h3 class="font-semibold text-lg mb-2">Community-verified</h3>
+            <p class="text-base-content/55 text-sm leading-relaxed">Real reviews from real neighbors. Know exactly who cooked your meal and how others rated it.</p>
+          </div>
+        </div>
+      </section>
+    } @placeholder {
+      <div class="h-48"></div>
+    }
+
+  } @else {
+    <!-- Register form ------------------------------------------------ -->
+    <div class="min-h-screen bg-base-200 flex items-center justify-center pt-16">
+      <app-register
+        class="w-full"
+        (cancelRegister)="showRegister(false)"
+      />
+    </div>
+  }
+</div>

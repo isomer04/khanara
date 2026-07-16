@@ -1,0 +1,94 @@
+<div class="max-w-2xl mx-auto py-10 px-4">
+
+  <!-- Page header -->
+  <div class="mb-8">
+    <h1 class="text-4xl font-bold" style="font-family: var(--font-display)">Open your kitchen</h1>
+    <p class="text-base-content/50 mt-2 text-sm">Tell guests who you are and what you cook.</p>
+  </div>
+
+  <div class="rounded-2xl bg-base-100 shadow-sm border border-base-200 p-8 flex flex-col gap-6">
+
+    <!-- Kitchen name -->
+    <div class="form-control">
+      <label class="label pb-1.5">
+        <span class="label-text font-semibold">Kitchen name <span class="text-error">*</span></span>
+      </label>
+      <input
+        [(ngModel)]="form.kitchenName"
+        name="kitchenName"
+        type="text"
+        class="input input-bordered w-full"
+        placeholder="e.g. Ammu's Kitchen"
+        maxlength="100"
+      />
+    </div>
+
+    <!-- Bio -->
+    <div class="form-control">
+      <label class="label pb-1.5">
+        <span class="label-text font-semibold">Bio <span class="text-base-content/40 font-normal">(optional)</span></span>
+      </label>
+      <textarea
+        [(ngModel)]="form.bio"
+        name="bio"
+        class="textarea textarea-bordered w-full resize-none leading-relaxed"
+        placeholder="Tell guests about yourself and your cooking — your background, what you specialize in, what makes your food special..."
+        maxlength="1000"
+        rows="5"
+      ></textarea>
+      <label class="label pt-1">
+        <span class="label-text-alt text-base-content/40">{{ (form.bio || '').length }} / 1000</span>
+      </label>
+    </div>
+
+    <!-- Cuisine tags -->
+    <div class="form-control">
+      <label class="label pb-1.5">
+        <span class="label-text font-semibold">Cuisine(s) <span class="text-error">*</span></span>
+        <span class="label-text-alt text-base-content/40">Select all that apply</span>
+      </label>
+      <div class="flex flex-wrap gap-2">
+        @for (tag of cuisineTags; track tag.value) {
+          <button
+            type="button"
+            class="btn btn-sm rounded-full transition-colors"
+            [class.btn-primary]="isTagSelected(tag.value)"
+            [class.btn-outline]="!isTagSelected(tag.value)"
+            [attr.aria-pressed]="isTagSelected(tag.value)"
+            (click)="toggleCuisineTag(tag.value)"
+          >
+            {{ tag.label }}
+          </button>
+        }
+      </div>
+    </div>
+
+    <!-- Zip codes -->
+    <div class="form-control">
+      <label class="label pb-1.5">
+        <span class="label-text font-semibold">Zip codes you serve</span>
+        <span class="label-text-alt text-base-content/40">Comma-separated</span>
+      </label>
+      <input
+        [(ngModel)]="form.serviceZipCodesRaw"
+        name="zipCodes"
+        type="text"
+        class="input input-bordered w-full"
+        placeholder="e.g. 10001, 10002, 10003"
+      />
+    </div>
+
+    <!-- Submit -->
+    <button
+      class="btn btn-primary w-full rounded-full mt-2"
+      (click)="submit()"
+      [disabled]="loading()"
+    >
+      @if (loading()) {
+        <span class="loading loading-spinner loading-sm"></span>
+      }
+      Open my kitchen
+    </button>
+
+  </div>
+</div>

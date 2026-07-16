@@ -1,0 +1,108 @@
+@if (!loading()) {
+  <div class="card bg-base-100 shadow-md mt-4">
+    <div class="card-body p-4">
+
+      @if (!review()) {
+        <!-- Eater: write a review -->
+        @if (isEater) {
+          <h3 class="font-semibold mb-3">How was your order?</h3>
+          <!-- Star picker -->
+          <div class="flex gap-1 mb-3">
+            @for (n of [1,2,3,4,5]; track n) {
+              <button
+                type="button"
+                class="text-3xl cursor-pointer transition-colors {{ starClass(n) }}"
+                [attr.aria-label]="'Rate ' + n + (n === 1 ? ' star' : ' stars')"
+                [attr.aria-pressed]="selectedRating() === n"
+                (mouseenter)="setHover(n)"
+                (mouseleave)="clearHover()"
+                (click)="selectRating(n)"
+              >★</button>
+            }
+          </div>
+          @if (selectedRating() > 0) {
+            <textarea
+              class="textarea textarea-bordered w-full mb-3"
+              rows="3"
+              placeholder="Share your experience (optional)..."
+              [value]="comment()"
+              (input)="comment.set($any($event.target).value)"
+            ></textarea>
+            <button
+              class="btn btn-primary w-full"
+              (click)="submitReview()"
+              [disabled]="submitting()"
+            >
+              @if (submitting()) {
+                <span class="loading loading-spinner loading-sm"></span>
+              }
+              Submit review
+            </button>
+          }
+        }
+        <!-- Cook: no review yet — nothing to show in this card -->
+      } @else {
+        <!-- Review exists — show it -->
+        <div>
+          <div class="flex items-center gap-2 mb-1">
+            <span class="font-semibold">{{ review()!.authorDisplayName }}</span>
+            <span class="text-xs text-gray-400">{{ review()!.createdAt | date: 'MMM d, y' }}</span>
+          </div>
+          <!-- Stars (read-only) -->
+          <div class="flex gap-0.5 mb-2">
+            @for (n of filledStars(review()!.rating); track n) {
+              <span class="text-yellow-400">★</span>
+            }
+            @for (n of emptyStars(review()!.rating); track n) {
+              <span class="text-gray-300">★</span>
+            }
+          </div>
+          @if (review()!.comment) {
+            <p class="text-sm text-gray-700 mb-3">{{ review()!.comment }}</p>
+          }
+
+          <!-- Cook reply -->
+          @if (review()!.cookReply) {
+            <div class="bg-base-200 rounded-lg p-3 mt-2">
+              <p class="text-xs text-gray-500 mb-1">Cook's reply · {{ review()!.cookRepliedAt | date: 'MMM d, y' }}</p>
+              <p class="text-sm">{{ review()!.cookReply }}</p>
+            </div>
+          } @else if (isCook) {
+            <!-- Cook can reply -->
+            @if (!showReplyForm()) {
+              <button class="btn btn-outline btn-sm mt-2" (click)="showReplyForm.set(true)">
+                Reply to review
+              </button>
+            } @else {
+              <div class="mt-2">
+                <textarea
+                  class="textarea textarea-bordered w-full mb-2"
+                  rows="2"
+                  placeholder="Write a reply..."
+                  [value]="replyText()"
+                  (input)="replyText.set($any($event.target).value)"
+                ></textarea>
+                <div class="flex gap-2">
+                  <button
+                    class="btn btn-primary btn-sm flex-1"
+                    (click)="submitReply()"
+                    [disabled]="!replyText().trim() || submittingReply()"
+                  >
+                    @if (submittingReply()) {
+                      <span class="loading loading-spinner loading-sm"></span>
+                    }
+                    Post reply
+                  </button>
+                  <button class="btn btn-ghost btn-sm" (click)="showReplyForm.set(false)">
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            }
+          }
+        </div>
+      }
+
+    </div>
+  </div>
+}

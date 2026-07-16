@@ -1,0 +1,46 @@
+<div class="container mx-auto pt-24 px-4">
+  <h1 class="text-3xl font-bold mb-6">
+    {{ isCook ? 'Incoming orders' : 'My orders' }}
+  </h1>
+
+  @if (loading()) {
+    <div class="flex justify-center py-20">
+      <span class="loading loading-spinner loading-lg"></span>
+    </div>
+  } @else if (orders().length === 0) {
+    <div class="text-center py-20">
+      <p class="text-gray-500">No orders yet.</p>
+      @if (!isCook) {
+        <a routerLink="/cooks" class="btn btn-primary mt-4">Browse cooks</a>
+      }
+    </div>
+  } @else {
+    <div class="flex flex-col gap-4">
+      @for (order of orders(); track order.id) {
+        <a [routerLink]="['/orders', order.id]" class="card bg-base-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+          <div class="card-body p-4">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="font-semibold">
+                  @if (isCook) {
+                    Order from {{ order.eaterDisplayName }}
+                  } @else {
+                    {{ order.cookKitchenName }}
+                  }
+                </p>
+                <p class="text-sm text-gray-500">
+                  {{ order.items.length }} item{{ order.items.length !== 1 ? 's' : '' }} ·
+                  {{ order.totalAmount | currency }} ·
+                  {{ order.createdAt | date: 'MMM d, y' }}
+                </p>
+              </div>
+              <span class="badge {{ statusBadgeClass(order.status) }}">
+                {{ OrderStatusLabels[order.status] }}
+              </span>
+            </div>
+          </div>
+        </a>
+      }
+    </div>
+  }
+</div>

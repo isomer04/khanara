@@ -1,0 +1,86 @@
+<div class="py-10 px-0">
+
+  <div class="mb-8">
+    <h1 class="text-4xl font-bold" style="font-family: var(--font-display)">My Favorites</h1>
+    <p class="text-base-content/50 mt-1.5 text-sm">Cooks you've saved</p>
+  </div>
+
+  @if (loading()) {
+    <div class="flex justify-center py-24">
+      <span class="loading loading-spinner loading-lg text-primary"></span>
+    </div>
+  } @else if (favorites().length === 0) {
+    <div class="text-center py-24">
+      <div class="text-5xl mb-4">🤍</div>
+      <p class="text-base-content/50 text-lg mb-6">No favorites yet — browse cooks to get started.</p>
+      <a routerLink="/cooks" class="btn btn-primary rounded-full px-8">Browse Cooks</a>
+    </div>
+  } @else {
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      @for (fav of favorites(); track fav.cookProfileId) {
+        <div class="group rounded-2xl overflow-hidden bg-base-100 shadow-sm hover:shadow-xl transition-all duration-300 relative">
+          <!-- Favorite toggle -->
+          <div class="absolute top-3 right-3 z-10">
+            <app-favorite-button [cookId]="fav.cookProfileId" />
+          </div>
+          <a [routerLink]="['/cooks', fav.cookProfileId]">
+            <!-- Image -->
+            <div class="relative h-52 overflow-hidden bg-base-200">
+              @if (fav.kitchenPhotoUrl) {
+                <img
+                  [ngSrc]="getPhoto(fav)"
+                  [alt]="fav.kitchenName"
+                  fill
+                  disableOptimizedSrcset
+                  class="object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+              } @else {
+                <div class="absolute inset-0 flex items-center justify-center">
+                  <div class="text-center px-4">
+                    <div class="text-3xl mb-2">🍳</div>
+                    <p class="font-semibold text-base-content/70" style="font-family: var(--font-display)">{{ fav.kitchenName }}</p>
+                  </div>
+                </div>
+              }
+              @if (fav.isAcceptingOrders) {
+                <span class="absolute bottom-3 left-3 badge badge-success badge-sm shadow">Open now</span>
+              } @else {
+                <span class="absolute bottom-3 left-3 badge badge-ghost badge-sm shadow">Closed</span>
+              }
+            </div>
+            <!-- Card body -->
+            <div class="p-4">
+              <h2 class="font-semibold text-base leading-snug" style="font-family: var(--font-display)">{{ fav.kitchenName }}</h2>
+              <!-- Rating -->
+              <div class="flex items-center gap-1.5 mt-1.5 text-sm">
+                @if (fav.reviewCount > 0) {
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-4 text-amber-500">
+                    <path fill-rule="evenodd" d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.006 5.404.434c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.434 2.082-5.005Z" clip-rule="evenodd" />
+                  </svg>
+                  <span class="font-medium">{{ fav.averageRating.toFixed(1) }}</span>
+                  <span class="text-base-content/40">({{ fav.reviewCount }})</span>
+                } @else {
+                  <span class="text-base-content/35 italic">No reviews yet</span>
+                }
+              </div>
+            </div>
+          </a>
+        </div>
+      }
+    </div>
+
+    @if (pagination(); as meta) {
+      @if (meta.totalPages > 1) {
+        <div class="mt-10">
+          <app-paginator
+            [pageNumber]="pageNumber()"
+            [pageSize]="pageSize"
+            [totalCount]="meta.totalCount"
+            [totalPages]="meta.totalPages"
+            (pageChange)="onPageChange($event)"
+          />
+        </div>
+      }
+    }
+  }
+</div>

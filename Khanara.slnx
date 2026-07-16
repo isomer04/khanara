@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="backend/Khanara.API.csproj" />
+  <Project Path="backend/Khanara.API.Tests/Khanara.API.Tests.csproj" />
+</Solution>

@@ -1,0 +1,57 @@
+﻿Kitchen Photos Attribution
+==================================================
+
+All photos are from Unsplash (https://unsplash.com)
+Licensed under the Unsplash License (https://unsplash.com/license)
+
+File: bangla-ranna.jpg
+Search Query: indian food cooking
+Photo by fuseviews (https://unsplash.com/@fusewiews)
+Photo URL: https://unsplash.com/photos/a-pot-of-food-sitting-on-top-of-a-stove-NKygcCUD30A
+
+File: spice-route-kitchen.jpg
+Search Query: indian spices kitchen
+Photo by Anju Ravindranath (https://unsplash.com/@anjurnath)
+Photo URL: https://unsplash.com/photos/a-table-topped-with-different-types-of-spices-Nihdo084Yos
+
+File: lahori-flavors.jpg
+Search Query: middle eastern food
+Photo by Luna Wang (https://unsplash.com/@lunawangjl)
+Photo URL: https://unsplash.com/photos/a-plate-of-food-JB0Px6l3T3s
+
+File: bangkok-street-eats.jpg
+Search Query: thai food street
+Photo by Streets of Food (https://unsplash.com/@streets_of_food)
+Photo URL: https://unsplash.com/photos/brown-and-white-sea-creature-in-blue-plastic-container-bvfm4T3Y6ec
+
+File: golden-wok.jpg
+Search Query: chinese wok cooking
+Photo by Jack Wu (https://unsplash.com/@jackwu0722)
+Photo URL: https://unsplash.com/photos/a-person-cooking-food-in-a-wok-on-a-stove-MQlXQfppELk
+
+File: cedar-kitchen.jpg
+Search Query: mediterranean kitchen
+Photo by Ioannis Sarantis (https://unsplash.com/@die_griechen)
+Photo URL: https://unsplash.com/photos/two-white-and-blue-labeled-cans-pX5h48q0poY
+
+File: bosphorus-bites.jpg
+Search Query: turkish food
+Photo by Suad Kamardeen (https://unsplash.com/@suadkamardeen)
+Photo URL: https://unsplash.com/photos/roasted-meat-dish-3lnsCAQm23U
+
+File: saigon-kitchen.jpg
+Search Query: vietnamese food
+Photo by Vy Huynh (https://unsplash.com/@thanhvy14)
+Photo URL: https://unsplash.com/photos/white-ceramic-bowl-with-soup-and-green-leaves-rcHHKG01IPY
+
+File: seoul-food.jpg
+Search Query: korean food cooking
+Photo by rawkkim (https://unsplash.com/@rawkkim)
+Photo URL: https://unsplash.com/photos/plate-of-sushi-_0WOD6dsiaU
+
+File: bahay-kubo-kitchen.jpg
+Search Query: asian food cooking
+Photo by Serj Sakharovskiy (https://unsplash.com/@8bitago)
+Photo URL: https://unsplash.com/photos/grayscale-photo-of-people-in-front-of-a-train-F_VzdUkM_M0
+
+

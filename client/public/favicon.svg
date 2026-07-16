@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Bowl -->
+  <path d="M 20 40 Q 20 70 50 75 Q 80 70 80 40 L 75 40 Q 75 65 50 68 Q 25 65 25 40 Z" fill="#FF6B35" stroke="#D94A1F" stroke-width="2"/>
+  
+  <!-- Food/Steam lines -->
+  <path d="M 35 25 Q 35 20 35 15" stroke="#FF6B35" stroke-width="2.5" stroke-linecap="round" fill="none" opacity="0.8"/>
+  <path d="M 50 20 Q 50 15 50 10" stroke="#FF6B35" stroke-width="2.5" stroke-linecap="round" fill="none" opacity="0.8"/>
+  <path d="M 65 25 Q 65 20 65 15" stroke="#FF6B35" stroke-width="2.5" stroke-linecap="round" fill="none" opacity="0.8"/>
+  
+  <!-- Bowl rim -->
+  <ellipse cx="50" cy="40" rx="30" ry="8" fill="#FF8C61" stroke="#D94A1F" stroke-width="2"/>
+  
+  <!-- Food content -->
+  <ellipse cx="50" cy="40" rx="25" ry="6" fill="#FFB088"/>
+</svg>

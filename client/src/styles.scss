@@ -1,0 +1,178 @@
+@use "tailwindcss";
+
+@plugin "daisyui" {
+    themes: false;  /* Use custom themes defined below */
+    exclude: rootscrollgutter;
+}
+
+@theme {
+  --font-display: 'DM Serif Display', Georgia, serif;
+  --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+}
+
+@layer base {
+  body {
+    font-family: var(--font-sans);
+  }
+}
+
+@layer utilities {
+  /* Custom scrollbar utilities */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+  
+  .scrollbar-thumb-base-300::-webkit-scrollbar-thumb {
+    background-color: oklch(var(--bc) / 0.1);
+    border-radius: 9999px;
+  }
+  
+  .scrollbar-track-transparent::-webkit-scrollbar-track {
+    background-color: transparent;
+  }
+  
+  .hover\:scrollbar-thumb-base-content\/20:hover::-webkit-scrollbar-thumb {
+    background-color: oklch(var(--bc) / 0.2);
+  }
+  
+  /* Webkit scrollbar sizing */
+  .scrollbar-thin::-webkit-scrollbar {
+    height: 6px;
+    width: 6px;
+  }
+}
+
+/* ── Khanara signature theme ─────────────────────────────────────── */
+[data-theme="khanara"] {
+  color-scheme: light;
+
+  /* Brand */
+  --color-primary:         oklch(70% 0.158 65);    /* saffron amber    */
+  --color-primary-content: oklch(15% 0.03  65);    /* espresso on gold */
+  --color-secondary:       oklch(55% 0.175 35);    /* terracotta       */
+  --color-secondary-content: oklch(98% 0.01 35);
+  --color-accent:          oklch(62% 0.15  55);    /* aged copper      */
+  --color-accent-content:  oklch(98% 0.01  55);
+
+  /* Neutral */
+  --color-neutral:         oklch(28% 0.03  50);
+  --color-neutral-content: oklch(95% 0.01  80);
+
+  /* Surfaces — warm ivory, not clinical white */
+  --color-base-100: oklch(99%   0.007 85);
+  --color-base-200: oklch(96.5% 0.012 80);
+  --color-base-300: oklch(93%   0.018 75);
+  --color-base-content: oklch(16% 0.028 50);   /* espresso brown   */
+
+  /* Semantic */
+  --color-info:    oklch(70% 0.14 220);
+  --color-info-content: oklch(98% 0.01 220);
+  --color-success: oklch(60% 0.15 145);
+  --color-success-content: oklch(98% 0.01 145);
+  --color-warning: oklch(78% 0.14  75);
+  --color-warning-content: oklch(15% 0.02  75);
+  --color-error:   oklch(60% 0.20  25);
+  --color-error-content: oklch(98% 0.01  25);
+
+  /* Shape */
+  --radius-selector: 0.75rem;
+  --radius-field:    0.5rem;
+  --radius-box:      1rem;
+
+  /* Misc (DaisyUI v5 expects these) */
+  --size-selector: 0.25rem;
+  --size-field:    0.25rem;
+  --border: 1px;
+  --depth: 1;
+  --noise: 0;
+}
+
+/* ── Dark theme (custom for better visibility) ─────────────────────── */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Warm colors adjusted for dark mode */
+  --color-primary:         oklch(68% 0.15 45);     /* warm coral       */
+  --color-primary-content: oklch(98% 0.01 45);     /* white on coral   */
+  --color-secondary:       oklch(62% 0.14 30);     /* warm orange      */
+  --color-secondary-content: oklch(98% 0.01 30);
+  --color-accent:          oklch(70% 0.13 65);     /* golden           */
+  --color-accent-content:  oklch(15% 0.02 65);
+
+  /* Neutral */
+  --color-neutral:         oklch(25% 0.015 45);
+  --color-neutral-content: oklch(90% 0.01  45);
+
+  /* Dark surfaces - MUCH DARKER */
+  --color-base-100: oklch(18% 0.01 45);            /* very dark        */
+  --color-base-200: oklch(20% 0.01 45);            /* dark             */
+  --color-base-300: oklch(25% 0.015 45);           /* lighter dark     */
+  --color-base-content: oklch(92% 0.005 45);       /* light text       */
+
+  /* Semantic */
+  --color-info:    oklch(70% 0.14 220);
+  --color-info-content: oklch(98% 0.01 220);
+  --color-success: oklch(65% 0.15 145);
+  --color-success-content: oklch(15% 0.02 145);
+  --color-warning: oklch(75% 0.14  75);
+  --color-warning-content: oklch(15% 0.02  75);
+  --color-error:   oklch(65% 0.20  25);
+  --color-error-content: oklch(98% 0.01  25);
+
+  /* Shape */
+  --radius-selector: 0.75rem;
+  --radius-field:    0.5rem;
+  --radius-box:      1rem;
+
+  /* Misc */
+  --size-selector: 0.25rem;
+  --size-field:    0.25rem;
+  --border: 1px;
+  --depth: 1;
+  --noise: 0;
+}
+
+/* ── Light theme (clean standard light) ────────────────────────────── */
+[data-theme="light"] {
+  color-scheme: light;
+
+  /* Warm neutrals instead of blue */
+  --color-primary:         oklch(62% 0.15 40);     /* warm coral/salmon */
+  --color-primary-content: oklch(98% 0.01 40);     /* white on coral    */
+  --color-secondary:       oklch(58% 0.14 25);     /* warm red-orange   */
+  --color-secondary-content: oklch(98% 0.01 25);
+  --color-accent:          oklch(65% 0.13 60);     /* golden yellow     */
+  --color-accent-content:  oklch(15% 0.02 60);
+
+  /* Neutral */
+  --color-neutral:         oklch(30% 0.02  40);
+  --color-neutral-content: oklch(95% 0.01  40);
+
+  /* Clean white surfaces */
+  --color-base-100: oklch(100% 0 0);               /* pure white       */
+  --color-base-200: oklch(96%  0.002 40);          /* light gray       */
+  --color-base-300: oklch(92%  0.004 40);          /* gray             */
+  --color-base-content: oklch(20% 0.015 40);       /* dark text        */
+
+  /* Semantic */
+  --color-info:    oklch(65% 0.15 220);
+  --color-info-content: oklch(98% 0.01 220);
+  --color-success: oklch(60% 0.18 145);
+  --color-success-content: oklch(98% 0.01 145);
+  --color-warning: oklch(75% 0.16  75);
+  --color-warning-content: oklch(15% 0.02  75);
+  --color-error:   oklch(60% 0.22  25);
+  --color-error-content: oklch(98% 0.01  25);
+
+  /* Shape */
+  --radius-selector: 0.75rem;
+  --radius-field:    0.5rem;
+  --radius-box:      1rem;
+
+  /* Misc */
+  --size-selector: 0.25rem;
+  --size-field:    0.25rem;
+  --border: 1px;
+  --depth: 1;
+  --noise: 0;
+}

@@ -1,6 +1,6 @@
 # Architecture Overview
 
-Khanara is a full-stack web application with three main layers: an Angular SPA, an ASP.NET Core REST API, and a SQL Server database (Docker container in development, Azure in production). Integration tests swap in an in-memory SQLite database.
+Khanara is a full-stack web application with three main layers: an Angular SPA, an ASP.NET Core REST API, and a PostgreSQL database (Docker container in development, Cloud SQL on Google Cloud in production). Integration tests swap in an in-memory SQLite database.
 
 ```
 ┌─────────────────────────────────┐
@@ -19,8 +19,8 @@ Khanara is a full-stack web application with three main layers: an Angular SPA, 
 └────────────┬────────────────────┘
              │
 ┌────────────▼────────────────────┐     ┌─────────────┐
-│   SQL Server (Docker in dev,    │     │  Cloudinary │
-│   Azure in production)          │     │  (images)   │
+│   PostgreSQL (Docker in dev,    │     │  Cloudinary │
+│   Cloud SQL in production)      │     │  (images)   │
 └─────────────────────────────────┘     └─────────────┘
                                         ┌─────────────┐
                                         │   Stripe    │
@@ -41,7 +41,7 @@ Repositories         → EF Core queries; return domain entities or DTOs
   ↓
 AppDbContext         → EF Core DbContext with UTC converters and model config
   ↓
-SQL Server           → Persistent storage
+PostgreSQL           → Persistent storage
 ```
 
 **Services** (not repositories) handle cross-cutting logic:

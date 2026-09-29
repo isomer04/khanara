@@ -49,6 +49,11 @@ public abstract class BaseIntegrationTest : IClassFixture<CustomWebApplicationFa
         DbContext.CookProfiles.RemoveRange(DbContext.CookProfiles);
         DbContext.Photos.RemoveRange(DbContext.Photos);
 
+        // Let the daily reset job run again in the next test
+        await DbContext.JobRuns.ExecuteUpdateAsync(s => s
+            .SetProperty(j => j.LastRunDateUtc, (DateOnly?)null)
+            .SetProperty(j => j.LastRunAt, (DateTime?)null));
+
         // Remove all users (roles are preserved via seeding)
         var users = await UserManager.Users.ToListAsync();
         foreach (var user in users)

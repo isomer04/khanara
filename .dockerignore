@@ -1,0 +1,29 @@
+# Keep the build context small and free of secrets.
+.git
+.github
+.vscode
+.claude
+.puku-cli
+assets
+docs
+dev-docs
+notes
+infra
+
+# Secrets and local config
+.env
+.env.*
+**/appsettings.Development.json
+**/*.pem
+**/*.key
+client/ssl
+
+# Build output and dependencies (rebuilt inside the image)
+**/bin
+**/obj
+**/node_modules
+client/.angular
+client/dist
+backend/publish
+backend/wwwroot
+backend/Khanara.API.Tests

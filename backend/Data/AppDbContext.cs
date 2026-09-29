@@ -19,6 +19,7 @@ public class AppDbContext(DbContextOptions options) : IdentityDbContext<AppUser>
     public DbSet<Review> Reviews { get; set; }
     public DbSet<Favorite> Favorites { get; set; }
     public DbSet<CartItem> CartItems { get; set; }
+    public DbSet<JobRun> JobRuns { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -127,7 +128,8 @@ public class AppDbContext(DbContextOptions options) : IdentityDbContext<AppUser>
             entity.HasIndex(c => new { c.UserId, c.DishId })
                 .IsUnique();
 
-            entity.ToTable(tb => tb.HasCheckConstraint("CK_CartItems_Quantity", "Quantity >= 1 AND Quantity <= 100"));
+            // Column names are quoted because PostgreSQL folds unquoted identifiers to lower case.
+            entity.ToTable(tb => tb.HasCheckConstraint("CK_CartItems_Quantity", "\"Quantity\" >= 1 AND \"Quantity\" <= 100"));
         });
 
         modelBuilder.Entity<CookProfile>()
@@ -146,9 +148,16 @@ public class AppDbContext(DbContextOptions options) : IdentityDbContext<AppUser>
             .Property(i => i.UnitPriceSnapshot)
             .HasPrecision(18, 2);
 
+        modelBuilder.Entity<JobRun>(entity =>
+        {
+            entity.HasKey(j => j.Name);
+            entity.Property(j => j.Name).HasMaxLength(64);
+            entity.HasData(new JobRun { Name = JobRun.DailyPortionsReset });
+        });
+
         modelBuilder.Entity<Review>(entity =>
         {
-            entity.ToTable(tb => tb.HasCheckConstraint("CK_Reviews_Rating", "Rating >= 1 AND Rating <= 5"));
+            entity.ToTable(tb => tb.HasCheckConstraint("CK_Reviews_Rating", "\"Rating\" >= 1 AND \"Rating\" <= 5"));
         });
 
         var dateTimeConverter = new ValueConverter<DateTime, DateTime>(

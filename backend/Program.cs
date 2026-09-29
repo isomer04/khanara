@@ -9,6 +9,7 @@ using Khanara.API.Services;
 using Khanara.API.SignalR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Rewrite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -41,6 +42,15 @@ if (!isTestEnvironment)
         throw new InvalidOperationException("Stripe:SecretKey is not configured.");
     if (string.IsNullOrWhiteSpace(builder.Configuration["Stripe:WebhookSecret"]))
         throw new InvalidOperationException("Stripe:WebhookSecret is not configured.");
+
+    // Without in-process timers the jobs only run when Cloud Scheduler can call JobsController.
+    if (!builder.Configuration.GetValue("Jobs:RunInProcess", true))
+    {
+        if (string.IsNullOrWhiteSpace(builder.Configuration["Jobs:OidcAudience"]))
+            throw new InvalidOperationException("Jobs:OidcAudience is not configured.");
+        if (string.IsNullOrWhiteSpace(builder.Configuration["Jobs:SchedulerServiceAccountEmail"]))
+            throw new InvalidOperationException("Jobs:SchedulerServiceAccountEmail is not configured.");
+    }
 }
 
 // ── Services ──────────────────────────────────────────────────────────────────
@@ -49,7 +59,7 @@ if (!isTestEnvironment)
 {
     builder.Services.AddDbContext<AppDbContext>(opt =>
     {
-        opt.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
+        opt.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"));
     });
 }
 
@@ -65,8 +75,18 @@ builder.Services.AddSingleton<OrderPresenceTracker>();
 builder.Services.Configure<StripeSettings>(builder.Configuration.GetSection("Stripe"));
 Stripe.StripeConfiguration.ApiKey = builder.Configuration["Stripe:SecretKey"];
 builder.Services.AddScoped<IStripeService, StripeService>();
-builder.Services.AddHostedService<AbandonedOrderCleanupService>();
-builder.Services.AddHostedService<DailyPortionsResetService>();
+
+builder.Services.AddScoped<AbandonedOrderCleanupJob>();
+builder.Services.AddScoped<DailyPortionsResetJob>();
+// In-process timers need an always-on instance. Cloud Run scales to zero, so
+// there Jobs:RunInProcess=false and Cloud Scheduler calls JobsController instead.
+if (builder.Configuration.GetValue("Jobs:RunInProcess", true))
+{
+    builder.Services.AddHostedService<AbandonedOrderCleanupService>();
+    builder.Services.AddHostedService<DailyPortionsResetService>();
+}
+
+builder.Services.AddHealthChecks();
 
 builder.Services.AddRateLimiter(options =>
 {
@@ -100,6 +120,8 @@ builder.Services.AddIdentityCore<AppUser>(opt =>
 .AddEntityFrameworkStores<AppDbContext>()
 .AddSignInManager<SignInManager<AppUser>>();
 
+const string SchedulerJobScheme = "SchedulerOidc";
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -128,12 +150,38 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 return Task.CompletedTask;
             }
         };
+    })
+    // Google-signed OIDC tokens sent by Cloud Scheduler to JobsController.
+    .AddJwtBearer(SchedulerJobScheme, options =>
+    {
+        options.Authority = "https://accounts.google.com";
+        options.MapInboundClaims = false; // keep the raw "email" claim
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidIssuers = ["https://accounts.google.com", "accounts.google.com"],
+            ValidateAudience = true,
+            ValidAudience = builder.Configuration["Jobs:OidcAudience"]
+        };
     });
 
 builder.Services.AddAuthorizationBuilder()
     .AddPolicy("RequireAdminRole", policy => policy.RequireRole("Admin"))
     .AddPolicy("ModeratePhotoRole", policy => policy.RequireRole("Admin", "Moderator"))
-    .AddPolicy("RequireCookRole", policy => policy.RequireRole("Cook"));
+    .AddPolicy("RequireCookRole", policy => policy.RequireRole("Cook"))
+    // Any Google service account can mint a token for our audience, so also
+    // pin the caller to the scheduler's service account. Denies everything
+    // when Jobs:SchedulerServiceAccountEmail is not configured.
+    .AddPolicy("SchedulerJob", policy => policy
+        .AddAuthenticationSchemes(SchedulerJobScheme)
+        .RequireAuthenticatedUser()
+        .RequireAssertion(context =>
+        {
+            var schedulerEmail = builder.Configuration["Jobs:SchedulerServiceAccountEmail"];
+            return !string.IsNullOrWhiteSpace(schedulerEmail)
+                && context.User.HasClaim("email", schedulerEmail)
+                && context.User.HasClaim(c => c.Type == "email_verified"
+                    && string.Equals(c.Value, "true", StringComparison.OrdinalIgnoreCase));
+        }));
 
 builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(o =>
     o.MultipartBodyLengthLimit = 5 * 1024 * 1024); // 5 MB
@@ -174,6 +222,9 @@ builder.Services.AddSwaggerGen(options =>
 var app = builder.Build();
 
 app.UseMiddleware<ExceptionMiddleware>();
+
+// www.khanara.shop → khanara.shop, so the host-only refresh cookie isn't split across two hosts
+app.UseRewriter(new RewriteOptions().AddRedirectToNonWwwPermanent());
 
 // HTTPS redirect must come before static files so image requests are also redirected
 app.UseHttpsRedirection();
@@ -255,6 +306,7 @@ app.MapHub<OrderHub>("hubs/order", options =>
 {
     options.CloseOnAuthenticationExpiration = true;
 });
+app.MapHealthChecks("/healthz");
 app.MapFallbackToController("Index", "Fallback");
 
 // Skip database initialization in Test environment (handled by test infrastructure)
@@ -273,6 +325,10 @@ if (!app.Environment.IsEnvironment("Test"))
     {
         var logger = services.GetRequiredService<ILogger<Program>>();
         logger.LogError(ex, "An error occurred during migration");
+
+        // Outside Development, fail the startup so a revision that can't reach its
+        // database never passes its startup probe or takes traffic.
+        if (!app.Environment.IsDevelopment()) throw;
     }
 }
 

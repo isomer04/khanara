@@ -1,0 +1,74 @@
+name: Deploy to Cloud Run
+
+# Builds the image and rolls out a new Cloud Run revision after "CI/CD Pipeline"
+# passes on a push to main. Everything else (service config, secrets, database,
+# DNS) is managed by Terraform in infra/terraform/prod.
+#
+# Setup: copy the `github_actions_variables` Terraform output into
+# Settings → Secrets and variables → Actions → Variables. Until GCP_PROJECT_ID
+# exists the job is skipped.
+on:
+  workflow_run:
+    workflows: ["CI/CD Pipeline"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-gcp
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    # workflow_run also fires for pull requests (including forks whose branch
+    # is called "main"), so only deploy CI runs triggered by a push to this repo.
+    if: >-
+      vars.GCP_PROJECT_ID != '' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event == 'push' &&
+        github.event.workflow_run.head_repository.full_name == github.repository))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # Workload Identity Federation
+    env:
+      SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SHA }}
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOYER_SA }}
+
+      - uses: google-github-actions/setup-gcloud@v3
+
+      - name: Build and push image
+        env:
+          IMAGE: ${{ vars.GCP_ARTIFACT_REGISTRY }}/${{ vars.GCP_SERVICE }}:${{ env.SHA }}
+        run: |
+          gcloud auth configure-docker "${{ vars.GCP_REGION }}-docker.pkg.dev" --quiet
+          docker build -t "$IMAGE" .
+          docker push "$IMAGE"
+          echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
+
+      - name: Deploy new revision
+        run: |
+          gcloud run deploy "${{ vars.GCP_SERVICE }}" \
+            --image "$IMAGE" \
+            --region "${{ vars.GCP_REGION }}" \
+            --project "${{ vars.GCP_PROJECT_ID }}" \
+            --quiet
+
+      - name: Smoke test
+        run: |
+          url=$(gcloud run services describe "${{ vars.GCP_SERVICE }}" \
+            --region "${{ vars.GCP_REGION }}" \
+            --project "${{ vars.GCP_PROJECT_ID }}" \
+            --format='value(status.url)')
+          curl --fail --silent --show-error --retry 5 --retry-delay 10 --retry-all-errors "$url/healthz"

@@ -70,7 +70,11 @@ export class OrderChat implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
-    this.hub.leaveOrder(this.orderId);
+    // Also close the socket: an open WebSocket keeps the Cloud Run instance
+    // active (and billed) for as long as the tab stays open. Closing can cancel
+    // the pending leave call; OrderHub.OnDisconnectedAsync clears presence anyway.
+    this.hub.leaveOrder(this.orderId)?.catch(() => {});
+    this.hub.disconnect();
     this.subs.forEach((s) => s.unsubscribe());
   }
 

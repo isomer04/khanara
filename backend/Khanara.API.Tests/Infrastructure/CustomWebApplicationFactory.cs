@@ -1,7 +1,9 @@
 using Khanara.API.Data;
 using Khanara.API.Entities;
 using Khanara.API.Interfaces;
+using Khanara.API.Tests.Helpers;
 using Khanara.API.Tests.Mocks;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -10,6 +12,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.IdentityModel.Protocols;
+using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using System.IO;
 
 namespace Khanara.API.Tests.Infrastructure;
@@ -98,6 +102,16 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
             if (photoDescriptor != null)
                 services.Remove(photoDescriptor);
             services.AddScoped(_ => MockPhotoService.Object);
+
+            // Validate Cloud Scheduler tokens against a local key instead of
+            // downloading Google's signing keys.
+            services.PostConfigure<JwtBearerOptions>("SchedulerOidc", options =>
+            {
+                var configuration = new OpenIdConnectConfiguration { Issuer = SchedulerTokens.GoogleIssuer };
+                configuration.SigningKeys.Add(SchedulerTokens.SigningKey);
+                options.ConfigurationManager =
+                    new StaticConfigurationManager<OpenIdConnectConfiguration>(configuration);
+            });
 
             // Disable background services in tests
             var hostedServices = services.Where(d => d.ServiceType == typeof(IHostedService)).ToList();

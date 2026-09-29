@@ -1,6 +1,6 @@
 # Khanara
 
-**🌐 Moving to Google Cloud: [https://khanara.shop](https://khanara.shop)** — Cloud Run + Cloud SQL, provisioned with Terraform ([plan](docs/gcp-deployment-plan.md)). The previous Azure deployment went offline when the free tier expired. See the [demo gif](assets/khanara.gif) below.
+**🌐 Live site: [khanara-940992710588.us-central1.run.app](https://khanara-940992710588.us-central1.run.app)**: running on Google Cloud Run + Cloud SQL, provisioned with Terraform ([plan](docs/gcp-deployment-plan.md)). The custom domain [khanara.shop](https://khanara.shop) is being connected. See the [demo gif](assets/khanara.gif) below.
 
 A home-cooked food marketplace connecting home cooks with food enthusiasts, specializing in Asian and Arabian cuisines.
 
@@ -18,7 +18,7 @@ A home-cooked food marketplace connecting home cooks with food enthusiasts, spec
 
 ### Demo
 
-While the live site is down, here's a walkthrough of the app:
+Here's a walkthrough of the app:
 
 ![Khanara demo](assets/khanara.gif)
 
@@ -101,7 +101,7 @@ cd backend/Khanara.API.Tests && dotnet test
 
 ## Deployment
 
-**Target: Google Cloud at [khanara.shop](https://khanara.shop).** One Cloud Run container (API + SPA) that scales to zero, Cloud SQL for PostgreSQL, Secret Manager, Cloud Scheduler for the background jobs, and Cloud DNS. All of it is defined in Terraform under [`infra/terraform/`](infra/terraform). It costs about $10–15/month, so the $300 free-trial credit covers the whole trial. See the [GCP deployment plan](docs/gcp-deployment-plan.md) for the architecture, costs and runbook.
+**Live on Google Cloud at [khanara-940992710588.us-central1.run.app](https://khanara-940992710588.us-central1.run.app)** (custom domain [khanara.shop](https://khanara.shop) coming soon). One Cloud Run container (API + SPA) that scales to zero, Cloud SQL for PostgreSQL, Secret Manager, Cloud Scheduler for the background jobs, and Cloud DNS. All of it is defined in Terraform under [`infra/terraform/`](infra/terraform). It costs about $10–15/month, so the $300 free-trial credit covers the whole trial. See the [GCP deployment plan](docs/gcp-deployment-plan.md) for the architecture, costs and runbook.
 
 When CI passes on `main`, [`deploy-gcp.yml`](.github/workflows/deploy-gcp.yml) builds the Docker image, pushes it to Artifact Registry and rolls out a new revision. It authenticates through **Workload Identity Federation**, so no service-account keys are stored. See [docs/deployment.md](docs/deployment.md) for environment variables, Stripe webhooks and the security checklist.
 

@@ -87,6 +87,11 @@ public class PaymentsController(
         if (alreadyProcessed)
             return Ok();
 
+        // The handlers' conditional UPDATEs and the idempotency marker commit together.
+        // Otherwise a failed marker insert would leave the order accepted while Stripe's
+        // retry, no longer matching a pending order, skips the OrderStatusChanged broadcast.
+        await using var transaction = await context.Database.BeginTransactionAsync();
+
         OrderStatusChangedDto? statusChange = null;
         switch (stripeEvent.Type)
         {
@@ -107,9 +112,13 @@ public class PaymentsController(
                 ProcessedAt = DateTime.UtcNow
             });
             await context.SaveChangesAsync();
+            await transaction.CommitAsync();
         }
         catch (DbUpdateException ex)
         {
+            // Postgres rejects further commands in a failed transaction, so roll back first.
+            await transaction.RollbackAsync();
+
             // Re-check idempotency marker to detect concurrent duplicate insert
             var processedConcurrently = await context.StripeWebhookEvents
                 .AnyAsync(e => e.StripeEventId == stripeEvent.Id);

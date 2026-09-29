@@ -337,6 +337,76 @@ public class PaymentsControllerTests : BaseIntegrationTest
     }
 
     [Fact]
+    public async Task ProcessWebhook_MarkerSaveFails_RollsBackAcceptanceSoRetryAccepts()
+    {
+        // Arrange
+        var (eater, cook, profile, dish, order) = await CreateStripeOrderScenario();
+        order.StripeSessionId = "cs_test_retry";
+        await DbContext.SaveChangesAsync();
+
+        var stripeEvent = new Event
+        {
+            Id = "evt_test_retry",
+            Type = "checkout.session.completed",
+            Data = new EventData
+            {
+                Object = new Stripe.Checkout.Session
+                {
+                    Id = "cs_test_retry",
+                    PaymentIntentId = "pi_test_retry"
+                }
+            }
+        };
+
+        Factory.MockStripeService
+            .Setup(s => s.ConstructWebhookEvent(It.IsAny<string>(), It.IsAny<string>()))
+            .Returns(stripeEvent);
+
+        HttpRequestMessage WebhookRequest()
+        {
+            var request = new HttpRequestMessage(HttpMethod.Post, "/api/payments/webhook")
+            {
+                Content = new StringContent("{\"id\":\"evt_test_retry\"}", Encoding.UTF8, "application/json")
+            };
+            request.Headers.Add("Stripe-Signature", "test_signature");
+            return request;
+        }
+
+        // Act: recording the idempotency marker fails with a non-duplicate error
+        await DbContext.Database.ExecuteSqlRawAsync(
+            "CREATE TRIGGER fail_webhook_marker BEFORE INSERT ON StripeWebhookEvents " +
+            "BEGIN SELECT RAISE(ABORT, 'simulated failure'); END;");
+        HttpResponseMessage failedResponse;
+        try
+        {
+            failedResponse = await Client.SendAsync(WebhookRequest());
+        }
+        finally
+        {
+            await DbContext.Database.ExecuteSqlRawAsync("DROP TRIGGER fail_webhook_marker;");
+        }
+
+        // Assert: the acceptance rolled back with the marker, so the order is still pending
+        failedResponse.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
+
+        DbContext.ChangeTracker.Clear();
+        var pendingOrder = await DbContext.Orders.FindAsync(order.Id);
+        pendingOrder!.Status.Should().Be(OrderStatus.Pending);
+        pendingOrder.PaymentStatus.Should().Be(PaymentStatus.Pending);
+
+        // Act: Stripe retries the event
+        var retryResponse = await Client.SendAsync(WebhookRequest());
+
+        // Assert: the retry accepts the order
+        retryResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        DbContext.ChangeTracker.Clear();
+        var acceptedOrder = await DbContext.Orders.FindAsync(order.Id);
+        acceptedOrder!.Status.Should().Be(OrderStatus.Accepted);
+        acceptedOrder.PaymentStatus.Should().Be(PaymentStatus.Paid);
+    }
+
+    [Fact]
     public async Task ProcessWebhook_ChargeRefunded_UpdatesPaymentStatus()
     {
         // Arrange

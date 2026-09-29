@@ -68,7 +68,7 @@ Stripe__WebhookSecret                  (secret: khanara-stripe-webhook-secret)
 CloudinarySettings__CloudName
 Jwt__Issuer / Jwt__Audience            https://khanara.shop
 Cors__AllowedOrigins__0 / __1          https://khanara.shop, https://www.khanara.shop
-Stripe__SuccessUrl / Stripe__CancelUrl https://khanara.shop/...
+Stripe__SuccessUrl / Stripe__CancelUrl https://khanara.shop/... (the run.app URL until enable_domain_mapping is on)
 Jobs__RunInProcess                     false
 Jobs__OidcAudience                     https://khanara.shop/api/jobs
 Jobs__SchedulerServiceAccountEmail     khanara-scheduler@<project>.iam.gserviceaccount.com

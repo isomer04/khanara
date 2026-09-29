@@ -23,5 +23,5 @@ Things to know:
 
 - **No secrets in state.** The DB password and JWT key are generated with ephemeral resources and sent through write-only arguments. Stripe/Cloudinary keys are added with `gcloud secrets versions add` (see the runbook).
 - **CI owns the image.** `deploy-gcp.yml` rolls out new images; Terraform ignores image changes. A `terraform plan` right after a deploy should show no changes.
-- **Rotate** by bumping `db_password_version` / `token_key_version`.
+- **Rotate** by bumping `db_password_version` / `token_key_version`. The apply rolls out a new Cloud Run revision with the new value.
 - `*.tfvars`, `backend.hcl`, state and `.terraform/` are gitignored. Only the `*.example` files are committed.

@@ -20,13 +20,23 @@ locals {
     "stripe-webhook-secret",
   ])
 
+  # A literal, not google_sql_user.app.name: the user's password version is
+  # derived from this prefix.
+  db_user = "khanara_app"
+
   # Keep the pool well below db-f1-micro's 25-connection limit.
   db_connection_prefix = join(";", [
     "Host=/cloudsql/${google_sql_database_instance.main.connection_name}",
     "Database=${google_sql_database.app.name}",
-    "Username=${google_sql_user.app.name}",
+    "Username=${local.db_user}",
     "Maximum Pool Size=10",
   ])
+
+  # The password is ephemeral (a new value on every run), so the secret can only
+  # be rewritten in the same apply that sets the password on the Cloud SQL user.
+  # Both use this version, which also changes with the prefix, so editing the
+  # prefix rotates the password instead of never reaching Secret Manager.
+  db_credentials_version = parseint(substr(sha256("${var.db_password_version}:${local.db_connection_prefix}"), 0, 8), 16)
 }
 
 resource "google_secret_manager_secret" "app" {
@@ -58,15 +68,25 @@ resource "google_secret_manager_secret_version" "jwt_token_key" {
   secret                 = google_secret_manager_secret.app["jwt-token-key"].id
   secret_data_wo         = ephemeral.random_password.jwt.result
   secret_data_wo_version = var.token_key_version
+
+  # Cloud Run pins this version (cloudrun.tf); keep the old one until the new
+  # revision is serving.
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 resource "google_secret_manager_secret_version" "db_connection_string" {
   secret                 = google_secret_manager_secret.app["db-connection-string"].id
   secret_data_wo         = "${local.db_connection_prefix};Password=${ephemeral.random_password.db.result}"
-  secret_data_wo_version = var.db_password_version
+  secret_data_wo_version = local.db_credentials_version
 
   # Wait for the password to be set on the user before publishing it.
   depends_on = [google_sql_user.app]
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 resource "google_secret_manager_secret_iam_member" "runtime" {

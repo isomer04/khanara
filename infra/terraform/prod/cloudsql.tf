@@ -50,19 +50,19 @@ resource "google_sql_database" "app" {
   deletion_policy = "ABANDON"
 }
 
-# Regenerated on every run but only sent when db_password_version changes.
-# The same value feeds the connection-string secret in secrets.tf, so both
-# always change together and the password is never stored in state.
+# Regenerated on every run but only sent when local.db_credentials_version
+# (secrets.tf) changes. The same value feeds the connection-string secret, so
+# both always change together and the password is never stored in state.
 ephemeral "random_password" "db" {
   length  = 40
   special = false # keeps the Npgsql connection string free of ; and =
 }
 
 resource "google_sql_user" "app" {
-  name                = "khanara_app"
+  name                = local.db_user
   instance            = google_sql_database_instance.main.name
   password_wo         = ephemeral.random_password.db.result
-  password_wo_version = var.db_password_version
+  password_wo_version = local.db_credentials_version
 
   # Postgres refuses to drop a role that owns tables; leave it on destroy.
   deletion_policy = "ABANDON"

@@ -14,8 +14,9 @@ locals {
     Cors__AllowedOrigins__1 = "https://www.${var.domain}"
 
     CloudinarySettings__CloudName = var.cloudinary_cloud_name
-    Stripe__SuccessUrl            = "${local.site_url}/payment/success?orderId={0}"
-    Stripe__CancelUrl             = "${local.site_url}/orders/{0}"
+    # Where Stripe sends the customer back to, so it must be a host that serves the app.
+    Stripe__SuccessUrl = "${local.public_url}/payment/success?orderId={0}"
+    Stripe__CancelUrl  = "${local.public_url}/orders/{0}"
 
     # Background jobs are triggered by Cloud Scheduler (scheduler.tf), not
     # in-process timers, because the instance scales to zero.
@@ -23,6 +24,15 @@ locals {
     DailyReset__CutoverHourUtc         = tostring(var.daily_reset_hour_utc)
     Jobs__OidcAudience                 = local.jobs_audience
     Jobs__SchedulerServiceAccountEmail = google_service_account.scheduler.email
+  }
+
+  # An instance reads its secrets once, at start. The secrets Terraform generates
+  # are pinned so that rotating one rolls out a new revision instead of leaving
+  # the running instance on the old database password. The manual ones stay on
+  # "latest" so `gcloud secrets versions add` needs no apply.
+  pinned_secret_versions = {
+    "db-connection-string" = google_secret_manager_secret_version.db_connection_string.version
+    "jwt-token-key"        = google_secret_manager_secret_version.jwt_token_key.version
   }
 }
 
@@ -107,7 +117,7 @@ resource "google_cloud_run_v2_service" "app" {
           value_source {
             secret_key_ref {
               secret  = google_secret_manager_secret.app[env.key].secret_id
-              version = "latest"
+              version = lookup(local.pinned_secret_versions, env.key, "latest")
             }
           }
         }

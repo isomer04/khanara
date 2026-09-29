@@ -5,6 +5,12 @@ data "google_project" "this" {
 locals {
   site_url = "https://${var.domain}"
 
+  # Where users actually reach the app: the domain once it is mapped, otherwise
+  # the default run.app URL. That URL is deterministic, so building it here
+  # avoids a dependency cycle between the service and its own URL.
+  run_app_url = "https://${var.service_name}-${data.google_project.this.number}.${var.region}.run.app"
+  public_url  = var.enable_domain_mapping ? local.site_url : local.run_app_url
+
   # Audience that Cloud Scheduler puts in its OIDC token and the API checks.
   # A fixed string (not the run.app URL) avoids a dependency cycle between
   # the service and its own URL.

@@ -247,8 +247,8 @@ Merge this PR. CI runs, then **Deploy to Cloud Run** builds the image and rolls 
 ## 9. Operations, risks and follow-ups
 
 **Rotation**
-- Bump `db_password_version` or `token_key_version` in `terraform.tfvars` and apply. Terraform generates new values for both the Cloud SQL user and the secret.
-- Then start a fresh revision: `gcloud run services update khanara --region us-central1 --update-labels rotated=<date>`.
+- Bump `db_password_version` or `token_key_version` in `terraform.tfvars` and apply. Terraform generates new values for both the Cloud SQL user and the secret. Cloud Run pins the versions of these two secrets, so the same apply rolls out a revision that reads the new value.
+- Changing the connection settings in `secrets.tf` (for example the pool size) rotates the DB password the same way, because the password is only ever written together with the secret.
 - A JWT key rotation logs everyone out.
 - If an apply ever fails between updating the DB user and writing the secret, bump the version again. Both get a fresh matching password.
 

@@ -27,52 +27,78 @@ public class AbandonedOrderCleanupJob(
     {
         var cutoff = DateTime.UtcNow - AbandonedAfter;
 
-        var abandonedOrders = await context.Orders
-            .Include(o => o.Items)
-            .ThenInclude(i => i.Dish)
+        var candidates = await context.Orders
+            .AsNoTracking()
             .Where(o => o.PaymentMethod == PaymentMethod.Stripe
                 && o.PaymentStatus == PaymentStatus.Pending
                 && o.Status == OrderStatus.Pending
                 && o.CreatedAt < cutoff)
+            .Select(o => new
+            {
+                o.Id,
+                o.StripeSessionId,
+                Items = o.Items.Select(i => new { i.DishId, i.Quantity }).ToList()
+            })
             .ToListAsync(ct);
 
-        if (abandonedOrders.Count == 0) return 0;
+        if (candidates.Count == 0) return 0;
 
         var now = DateTime.UtcNow;
-        foreach (var order in abandonedOrders)
+        var cancelled = new List<(int OrderId, string? SessionId)>();
+        foreach (var order in candidates)
         {
-            order.Status = OrderStatus.Cancelled;
-            order.CancellationReason = "Payment not completed within the allowed time";
-            order.UpdatedAt = now;
+            await using var transaction = await context.Database.BeginTransactionAsync(ct);
+
+            // Cancel only if the order is still unpaid and pending. A payment webhook
+            // that committed after the read above makes this match nothing, so a paid
+            // order is never cancelled and its portions are never handed back.
+            var updated = await context.Orders
+                .Where(o => o.Id == order.Id
+                    && o.PaymentStatus == PaymentStatus.Pending
+                    && o.Status == OrderStatus.Pending)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(o => o.Status, OrderStatus.Cancelled)
+                    .SetProperty(o => o.CancellationReason, "Payment not completed within the allowed time")
+                    .SetProperty(o => o.UpdatedAt, now), ct);
+
+            if (updated == 0) continue;
 
             foreach (var item in order.Items)
             {
-                if (item.Dish != null)
-                    item.Dish.PortionsRemainingToday += item.Quantity;
+                await context.Dishes
+                    .Where(d => d.Id == item.DishId)
+                    .ExecuteUpdateAsync(s => s.SetProperty(
+                        d => d.PortionsRemainingToday,
+                        d => d.PortionsRemainingToday + item.Quantity), ct);
             }
+
+            await transaction.CommitAsync(ct);
+            cancelled.Add((order.Id, order.StripeSessionId));
         }
 
-        await context.SaveChangesAsync(ct);
+        if (cancelled.Count == 0) return 0;
+
         logger.LogInformation(
             "Cancelled {Count} abandoned Stripe orders (older than {Minutes} min) and restored their dish portions",
-            abandonedOrders.Count, (int)AbandonedAfter.TotalMinutes);
+            cancelled.Count, (int)AbandonedAfter.TotalMinutes);
 
         // Explicitly expire the Stripe Checkout Sessions so the payment URLs are dead.
-        // This is best-effort — the DB cancellation above is already committed.
-        foreach (var order in abandonedOrders.Where(o => !string.IsNullOrEmpty(o.StripeSessionId)))
+        // This is best-effort — the DB cancellation above is already committed. If the
+        // customer still pays, PaymentsController refunds the late payment.
+        foreach (var (orderId, sessionId) in cancelled.Where(c => !string.IsNullOrEmpty(c.SessionId)))
         {
             try
             {
-                await stripeService.ExpireCheckoutSessionAsync(order.StripeSessionId!);
+                await stripeService.ExpireCheckoutSessionAsync(sessionId!);
             }
             catch (Exception ex)
             {
                 logger.LogWarning(ex,
                     "Failed to expire Stripe session {SessionId} for order {OrderId}",
-                    order.StripeSessionId, order.Id);
+                    sessionId, orderId);
             }
         }
 
-        return abandonedOrders.Count;
+        return cancelled.Count;
     }
 }

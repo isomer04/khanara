@@ -163,7 +163,7 @@ gcloud domains list-user-verified                  # must list khanara.shop
 **Using an existing Google account instead.** This is how the first deployment is done, from the account that holds the credit (`My Billing Account`):
 - Skip the separate `CLOUDSDK_CONFIG` folder.
 - Create the project under that account's organization, and pass `--project` explicitly so your default gcloud project doesn't change.
-- Set `enable_domain_mapping = false` in `prod/terraform.tfvars` until `gcloud domains list-user-verified` lists `khanara.shop` for that account. Then flip it to `true` and apply again.
+- Leave `enable_domain_mapping` at its default (`false`) until `gcloud domains list-user-verified` lists `khanara.shop` for that account (see Phase 5).
 
 ### Phase 1: Bootstrap (state bucket)
 
@@ -215,11 +215,12 @@ Merge this PR. CI runs, then **Deploy to Cloud Run** builds the image and rolls 
 
 ### Phase 5: DNS cutover
 
-1. If DNSSEC is on at your registrar, turn it off first.
-2. Set the registrar's nameservers to the four `dns_name_servers` outputs.
-3. Wait for propagation: `nslookup -type=NS khanara.shop 8.8.8.8`.
-4. Watch the certificate: `gcloud beta run domain-mappings describe --domain khanara.shop --region us-central1`. This usually takes 15–60 minutes and can take up to 24 hours.
-5. Check that Cloud Identity still shows the domain as verified.
+1. Once `gcloud domains list-user-verified` lists `khanara.shop`, set `enable_domain_mapping = true` in `prod/terraform.tfvars`, then plan and apply. This creates the apex and `www` mappings.
+2. If DNSSEC is on at your registrar, turn it off first.
+3. Set the registrar's nameservers to the four `dns_name_servers` outputs.
+4. Wait for propagation: `nslookup -type=NS khanara.shop 8.8.8.8`.
+5. Watch the certificate: `gcloud beta run domain-mappings describe --domain khanara.shop --region us-central1`. This usually takes 15–60 minutes and can take up to 24 hours.
+6. Check that Cloud Identity still shows the domain as verified.
 
 ### Phase 6: After go-live
 

@@ -146,18 +146,62 @@ public class PaymentsController(
         }
 
         var oldStatus = order.Status;
-        order.PaymentStatus = Khanara.API.Entities.PaymentStatus.Paid;
-        order.Status = OrderStatus.Accepted;
-        order.StripePaymentIntentId = session.PaymentIntentId;
-        order.UpdatedAt = DateTime.UtcNow;
+        var now = DateTime.UtcNow;
+
+        // Accept only an order that is still unpaid and pending, in one conditional
+        // UPDATE. If AbandonedOrderCleanupJob (or the eater) cancelled it first, this
+        // matches nothing instead of reviving an order whose portions were released.
+        var accepted = await context.Orders
+            .Where(o => o.Id == order.Id
+                && o.Status == OrderStatus.Pending
+                && o.PaymentStatus == Khanara.API.Entities.PaymentStatus.Pending)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(o => o.PaymentStatus, Khanara.API.Entities.PaymentStatus.Paid)
+                .SetProperty(o => o.Status, OrderStatus.Accepted)
+                .SetProperty(o => o.StripePaymentIntentId, session.PaymentIntentId)
+                .SetProperty(o => o.UpdatedAt, now));
+
+        if (accepted == 0)
+        {
+            await context.Entry(order).ReloadAsync();
+            await RefundPaymentForCancelledOrder(order, session.PaymentIntentId, now);
+            return null;
+        }
 
         return new OrderStatusChangedDto
         {
             OrderId = order.Id,
             OldStatus = oldStatus.ToString(),
             NewStatus = OrderStatus.Accepted.ToString(),
-            ChangedAt = order.UpdatedAt
+            ChangedAt = now
         };
+    }
+
+    // The customer finished checkout after the order was cancelled, so the money was
+    // captured for an order that will never be cooked. Refund it like any cancelled paid
+    // order. A Stripe failure propagates so the webhook returns 500 and Stripe retries;
+    // the idempotency key prevents a double refund.
+    private async Task RefundPaymentForCancelledOrder(Order order, string? paymentIntentId, DateTime now)
+    {
+        if (order.Status != OrderStatus.Cancelled
+            || order.PaymentStatus != Khanara.API.Entities.PaymentStatus.Pending
+            || string.IsNullOrEmpty(paymentIntentId))
+        {
+            logger.LogInformation(
+                "checkout.session.completed for order {OrderId} ignored: order is {Status} / {PaymentStatus}",
+                order.Id, order.Status, order.PaymentStatus);
+            return;
+        }
+
+        logger.LogWarning(
+            "Payment completed for cancelled order {OrderId}; refunding payment intent {PaymentIntentId}",
+            order.Id, paymentIntentId);
+
+        var refund = await stripe.RefundOrderAsync(paymentIntentId, $"refund-order-{order.Id}");
+        order.PaymentStatus = Khanara.API.Entities.PaymentStatus.Refunded;
+        order.StripePaymentIntentId = paymentIntentId;
+        order.StripeRefundId = refund.Id;
+        order.UpdatedAt = now;
     }
 
     private async Task HandleChargeRefunded(Event stripeEvent)

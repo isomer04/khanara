@@ -285,6 +285,58 @@ public class PaymentsControllerTests : BaseIntegrationTest
     }
 
     [Fact]
+    public async Task ProcessWebhook_CheckoutCompletedForCancelledOrder_RefundsInsteadOfAccepting()
+    {
+        // Arrange: the abandoned-order cleanup cancelled the order, then the customer paid anyway
+        var (eater, cook, profile, dish, order) = await CreateStripeOrderScenario(status: OrderStatus.Cancelled);
+        order.StripeSessionId = "cs_test_late";
+        await DbContext.SaveChangesAsync();
+
+        var stripeEvent = new Event
+        {
+            Id = "evt_test_late",
+            Type = "checkout.session.completed",
+            Data = new EventData
+            {
+                Object = new Stripe.Checkout.Session
+                {
+                    Id = "cs_test_late",
+                    PaymentIntentId = "pi_test_late"
+                }
+            }
+        };
+
+        Factory.MockStripeService
+            .Setup(s => s.ConstructWebhookEvent(It.IsAny<string>(), It.IsAny<string>()))
+            .Returns(stripeEvent);
+        Factory.MockStripeService
+            .Setup(s => s.RefundOrderAsync("pi_test_late", $"refund-order-{order.Id}"))
+            .ReturnsAsync(new Refund { Id = "re_test_late" });
+
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/payments/webhook")
+        {
+            Content = new StringContent("{\"id\":\"evt_test_late\"}", Encoding.UTF8, "application/json")
+        };
+        request.Headers.Add("Stripe-Signature", "test_signature");
+
+        // Act
+        var response = await Client.SendAsync(request);
+
+        // Assert: the order stays cancelled and the late payment is refunded
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        DbContext.ChangeTracker.Clear();
+        var updatedOrder = await DbContext.Orders.FindAsync(order.Id);
+        updatedOrder!.Status.Should().Be(OrderStatus.Cancelled);
+        updatedOrder.PaymentStatus.Should().Be(PaymentStatus.Refunded);
+        updatedOrder.StripePaymentIntentId.Should().Be("pi_test_late");
+        updatedOrder.StripeRefundId.Should().Be("re_test_late");
+
+        Factory.MockStripeService.Verify(
+            s => s.RefundOrderAsync("pi_test_late", $"refund-order-{order.Id}"), Times.Once);
+    }
+
+    [Fact]
     public async Task ProcessWebhook_ChargeRefunded_UpdatesPaymentStatus()
     {
         // Arrange

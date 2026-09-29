@@ -22,7 +22,7 @@
 2. When CI passes on a push to `main`, `.github/workflows/deploy-gcp.yml`:
    - authenticates to Google Cloud with Workload Identity Federation (no stored keys),
    - builds the root `Dockerfile` (Angular build → `dotnet publish` → ASP.NET runtime image) and pushes it to Artifact Registry,
-   - rolls out a new Cloud Run revision with that image and checks `/healthz`.
+   - rolls out a new Cloud Run revision with that image and checks `/health`.
 3. Terraform owns every other setting of the service (env vars, secrets, scaling). It ignores the image, so CI deploys never cause drift.
 
 ---

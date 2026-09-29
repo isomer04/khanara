@@ -71,4 +71,4 @@ jobs:
             --region "${{ vars.GCP_REGION }}" \
             --project "${{ vars.GCP_PROJECT_ID }}" \
             --format='value(status.url)')
-          curl --fail --silent --show-error --retry 5 --retry-delay 10 --retry-all-errors "$url/healthz"
+          curl --fail --silent --show-error --retry 5 --retry-delay 10 --retry-all-errors "$url/health"

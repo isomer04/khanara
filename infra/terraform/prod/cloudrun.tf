@@ -81,7 +81,7 @@ resource "google_cloud_run_v2_service" "app" {
         mount_path = "/cloudsql"
       }
 
-      # TCP rather than /healthz so the placeholder image also passes.
+      # TCP rather than /health so the placeholder image also passes.
       # Migrations run before Kestrel listens, so allow up to 4 minutes.
       startup_probe {
         tcp_socket {

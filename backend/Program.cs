@@ -306,7 +306,8 @@ app.MapHub<OrderHub>("hubs/order", options =>
 {
     options.CloseOnAuthenticationExpiration = true;
 });
-app.MapHealthChecks("/healthz");
+// Not /healthz: Cloud Run reserves URL paths ending in "z" and never forwards them.
+app.MapHealthChecks("/health");
 app.MapFallbackToController("Index", "Fallback");
 
 // Skip database initialization in Test environment (handled by test infrastructure)

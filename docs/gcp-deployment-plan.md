@@ -100,11 +100,11 @@ For comparison: keeping SQL Server and an always-on instance would cost about **
 | **Background jobs** | Job logic moved into `AbandonedOrderCleanupJob` and `DailyPortionsResetJob`. The timer services still call them when `Jobs:RunInProcess=true` (the default, for local dev). On Cloud Run, Cloud Scheduler calls `JobsController` instead |
 | **Job auth** | New `SchedulerOidc` JWT scheme validates Google-signed tokens: issuer `accounts.google.com`, audience `https://khanara.shop/api/jobs`. The `SchedulerJob` policy also pins `email` to the scheduler service account with `email_verified`. App user JWTs are rejected |
 | **Once-a-day reset** | New `JobRuns` table. The reset claims the day inside a transaction, so Scheduler retries, duplicate deliveries or manual runs can't hand back portions that were already sold. The old in-memory guard didn't survive restarts |
-| **Hosting** | `/healthz` endpoint; `AllowedHosts` no longer pinned to the Azure host; `www` → apex redirect; migration failure is fatal outside Development, so a broken revision never takes traffic; startup check that the jobs config is present when timers are off |
+| **Hosting** | `/health` endpoint (not `/healthz`: Cloud Run reserves paths ending in `z`); `AllowedHosts` no longer pinned to the Azure host; `www` → apex redirect; migration failure is fatal outside Development, so a broken revision never takes traffic; startup check that the jobs config is present when timers are off |
 | **Client** | Order detail and order chat pages close the SignalR connection on exit (cost, see §4) |
 | **Local dev** | `docker-compose.yml` now runs `postgres:17` on port 5433 (`POSTGRES_PASSWORD` in `.env`) |
 | **Packaging** | Root `Dockerfile` (Node 24 → .NET 10 SDK → ASP.NET runtime, non-root, port 8080) and `.dockerignore`, which keeps `appsettings.Development.json`, `publish/` and `.env*` out of the image |
-| **CI/CD** | `deploy-gcp.yml` runs after CI passes on a push to `main`: WIF auth → build and push → `gcloud run deploy --image` → `/healthz` smoke test. It is skipped until the GitHub variables exist. The old Azure workflow stays disabled |
+| **CI/CD** | `deploy-gcp.yml` runs after CI passes on a push to `main`: WIF auth → build and push → `gcloud run deploy --image` → `/health` smoke test. It is skipped until the GitHub variables exist. The old Azure workflow stays disabled |
 
 Forwarded headers are turned on through `ASPNETCORE_FORWARDEDHEADERS_ENABLED=true`, set in Terraform. The auth rate limiter then partitions by the real client IP instead of Google's front end, and HSTS is emitted.
 
@@ -230,7 +230,7 @@ Merge this PR. CI runs, then **Deploy to Cloud Run** builds the image and rolls 
 
 ## 8. Verification checklist
 
-- [ ] `curl -sI https://khanara.shop/healthz` returns `200` **and** a `strict-transport-security` header. The header proves forwarded headers work.
+- [ ] `curl -sI https://khanara.shop/health` returns `200` **and** a `strict-transport-security` header. The header proves forwarded headers work.
 - [ ] `https://www.khanara.shop` redirects (301) to `https://khanara.shop`.
 - [ ] Cloud Run logs show `Applying migration '…_InitialCreate'` and no errors.
 - [ ] `curl -X POST https://khanara.shop/api/jobs/daily-portions-reset` returns `401`.

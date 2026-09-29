@@ -84,6 +84,12 @@ variable "daily_reset_hour_utc" {
 
 # ── DNS ───────────────────────────────────────────────────────────────────────
 
+variable "enable_domain_mapping" {
+  description = "Map the domain to Cloud Run. Needs the Terraform account to be a verified owner of the domain (gcloud domains list-user-verified); leave false until it is."
+  type        = bool
+  default     = true
+}
+
 variable "apex_txt_records" {
   description = "Existing TXT records on the apex to keep after moving DNS to Cloud DNS, e.g. the google-site-verification value used by Cloud Identity."
   type        = list(string)

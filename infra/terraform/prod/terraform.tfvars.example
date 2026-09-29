@@ -11,6 +11,10 @@ apex_txt_records = [
 ]
 # mx_records = ["1 smtp.google.com."]
 
+# Until `gcloud domains list-user-verified` shows the domain for the account
+# running Terraform:
+# enable_domain_mapping = false
+
 # Optional overrides
 # region               = "us-central1"
 # domain               = "khanara.shop"

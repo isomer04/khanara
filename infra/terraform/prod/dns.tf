@@ -65,7 +65,7 @@ resource "google_dns_record_set" "mx" {
 # $18/month) but in preview. The account running Terraform must be a verified
 # owner of the domain: gcloud domains list-user-verified.
 resource "google_cloud_run_domain_mapping" "app" {
-  for_each = toset([var.domain, "www.${var.domain}"])
+  for_each = var.enable_domain_mapping ? toset([var.domain, "www.${var.domain}"]) : toset([])
 
   name     = each.value
   location = var.region

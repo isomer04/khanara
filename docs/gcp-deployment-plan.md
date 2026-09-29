@@ -160,6 +160,11 @@ gcloud domains list-user-verified                  # must list khanara.shop
 - **Permissions:** your account needs *Project Creator* on the org, *Billing Account User* on the billing account, and *Billing Account Costs Manager* for the budget. The Cloud Identity super admin can grant these under IAM → organization.
 - **Before moving DNS:** write down every record your registrar serves today (`nslookup -type=TXT khanara.shop`, `-type=MX`, and any CNAMEs). The Cloud Identity `google-site-verification` TXT **must** be carried over.
 
+**Using an existing Google account instead.** This is how the first deployment is done, from the account that holds the credit (`My Billing Account`):
+- Skip the separate `CLOUDSDK_CONFIG` folder.
+- Create the project under that account's organization, and pass `--project` explicitly so your default gcloud project doesn't change.
+- Set `enable_domain_mapping = false` in `prod/terraform.tfvars` until `gcloud domains list-user-verified` lists `khanara.shop` for that account. Then flip it to `true` and apply again.
+
 ### Phase 1: Bootstrap (state bucket)
 
 ```powershell

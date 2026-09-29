@@ -58,7 +58,7 @@ Khanara lets home cooks list their dishes, set daily portions, and receive order
 PostgreSQL runs in Docker. Set a password and start the container:
 
 ```bash
-# Create a .env file in the repo root (or set the variable in your shell)
+# Create a .env file in the repo root (docker-compose.yml reads it; it is gitignored)
 echo POSTGRES_PASSWORD=YourStrong!Passw0rd > .env
 docker compose up -d
 ```

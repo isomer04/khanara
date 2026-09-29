@@ -6,7 +6,9 @@ services:
     environment:
       - POSTGRES_DB=khanara
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in your environment or a local .env file}
+    # POSTGRES_PASSWORD comes from the gitignored .env file in the repo root.
+    env_file:
+      - .env
     ports:
       - "5433:5432"
     volumes:

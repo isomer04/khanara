@@ -1,6 +1,6 @@
 # Khanara
 
-**🌐 Live site: [khanara-940992710588.us-central1.run.app](https://khanara-940992710588.us-central1.run.app)**: running on Google Cloud Run + Cloud SQL, provisioned with Terraform ([plan](docs/gcp-deployment-plan.md)). The custom domain [khanara.shop](https://khanara.shop) is being connected. See the [demo gif](assets/khanara.gif) below.
+**🌐 Live site: [khanara-940992710588.us-central1.run.app](https://khanara-940992710588.us-central1.run.app)**: running on Google Cloud Run + Cloud SQL, provisioned with Terraform ([plan](docs/gcp-deployment-plan.md)). The custom domain [khanara.shop](https://khanara.shop) is being connected. Previously deployed on Azure App Service + Azure SQL ([screenshots](#previously-azure-app-service)). See the [demo gif](assets/khanara.gif) below.
 
 A home-cooked food marketplace connecting home cooks with food enthusiasts, specializing in Asian and Arabian cuisines.
 
@@ -105,9 +105,9 @@ cd backend/Khanara.API.Tests && dotnet test
 
 When CI passes on `main`, [`deploy-gcp.yml`](.github/workflows/deploy-gcp.yml) builds the Docker image, pushes it to Artifact Registry and rolls out a new revision. It authenticates through **Workload Identity Federation**, so no service-account keys are stored. See [docs/deployment.md](docs/deployment.md) for environment variables, Stripe webhooks and the security checklist.
 
-The app **has been deployed before** on Azure App Service with Azure SQL. See the [@docs/screenshots/](docs/screenshots/) folder for proof: the Azure overview (healthy web app on Linux/.NET 10), the Deployment Center activity log and GitHub Actions CI/CD runs.
+### Previously: Azure App Service
 
-### Past deployments (screenshots)
+Before moving to Google Cloud, the app ran at `khanara.azurewebsites.net` on **Azure App Service** (Linux, .NET 10) with **Azure SQL Database**. Every push to `main` built and deployed through GitHub Actions using **OIDC federated credentials**, so no publish-profile secrets were stored. It went offline when the Azure free tier expired. The screenshots below (also in [docs/screenshots/](docs/screenshots/)) show that deployment: the Azure overview (healthy web app on Linux/.NET 10), the Deployment Center activity log and the GitHub Actions CI/CD runs.
 
 | | |
 |---|---|

@@ -245,6 +245,25 @@ describe('Nav - Login', () => {
       expect(mockRouter.navigateByUrl).toHaveBeenCalledWith('/orders/7');
     });
 
+    it('should open the login modal with the return URL from a login=1 link', async () => {
+      vi.mocked(mockRouter.navigateByUrl).mockRestore();
+
+      await mockRouter.navigateByUrl('/?login=1&returnUrl=%2Forders%2F7');
+
+      expect(component['loginOpen']()).toBe(true);
+      expect(component['returnUrl']).toBe('/orders/7');
+    });
+
+    it('should ignore a login=1 link when already logged in', async () => {
+      vi.mocked(mockRouter.navigateByUrl).mockRestore();
+      mockAccountService.currentUser.set(mockUser);
+
+      await mockRouter.navigateByUrl('/?login=1&returnUrl=%2Forders%2F7');
+
+      expect(component['loginOpen']()).toBe(false);
+      expect(component['returnUrl']).toBeNull();
+    });
+
     it('should forget the return URL when the modal is dismissed', () => {
       component['returnUrl'] = '/orders/7';
 

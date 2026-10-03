@@ -116,6 +116,14 @@ describe('CookList', () => {
       expect(mockCookService.getCooks).toHaveBeenLastCalledWith(1, 12, CuisineTag.Thai, '90210');
     });
 
+    it('should treat an empty cuisine in the URL as unset, not Bengali', async () => {
+      await TestBed.inject(Router).navigateByUrl('/?cuisine=');
+      fixture.detectChanges();
+
+      expect(component.selectedCuisine()).toBeUndefined();
+      expect(mockCookService.getCooks).toHaveBeenLastCalledWith(1, 12, undefined, '');
+    });
+
     it('should ignore invalid filter values in the URL', async () => {
       await TestBed.inject(Router).navigateByUrl('/?cuisine=999&zip=abc');
       fixture.detectChanges();

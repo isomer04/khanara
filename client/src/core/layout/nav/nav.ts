@@ -69,15 +69,17 @@ export class Nav implements OnInit {
     this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(params => {
       if (params.get('login') !== '1') return;
 
-      const returnUrl = params.get('returnUrl');
-      // Only same-app paths; "//host" would be protocol-relative
-      this.returnUrl = returnUrl?.startsWith('/') && !returnUrl.startsWith('//') ? returnUrl : null;
       this.router.navigate([], {
         queryParams: { login: null, returnUrl: null },
         queryParamsHandling: 'merge',
         replaceUrl: true,
       });
-      if (!this.accountService.currentUser()) this.openLoginModal();
+      if (this.accountService.currentUser()) return;
+
+      const returnUrl = params.get('returnUrl');
+      // Only same-app paths; "//host" would be protocol-relative
+      this.returnUrl = returnUrl?.startsWith('/') && !returnUrl.startsWith('//') ? returnUrl : null;
+      this.openLoginModal();
     });
   }
 

@@ -1,7 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { finalize, switchMap } from 'rxjs';
+import { catchError, EMPTY, finalize, switchMap } from 'rxjs';
 import { CookService } from '../../../core/services/cook-service';
 import { AccountService } from '../../../core/services/account-service';
 import { ToastService } from '../../../core/services/toast-service';
@@ -74,7 +74,16 @@ export class CookOnboarding {
     }).pipe(
       // The current access token predates the Cook role, so cook-only endpoints
       // would 403 until the next refresh. Get a token that carries the role now.
-      switchMap(() => this.accountService.refreshToken()),
+      switchMap(() => this.accountService.refreshToken().pipe(
+        // The profile exists now, so a resubmit would fail. Signing in again
+        // gets a token with the Cook role.
+        catchError(() => {
+          this.toast.warning('Your kitchen was created. Please log in again to open your dashboard.');
+          this.accountService.logout();
+          this.router.navigate(['/'], { queryParams: { login: 1, returnUrl: '/cook/dashboard' } });
+          return EMPTY;
+        })
+      )),
       finalize(() => this.loading.set(false))
     ).subscribe({
       next: user => {

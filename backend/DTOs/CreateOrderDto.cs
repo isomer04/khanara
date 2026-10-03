@@ -28,7 +28,8 @@ public class CreateOrderDto
     [MaxLength(300)]
     public string? DeliveryAddress { get; set; }
 
-    [RegularExpression("^[0-9]{5}$",ErrorMessage = "Delivery zip code must be 5 digits.")]
+    // Surrounding whitespace is allowed; OrdersController trims it before saving
+    [RegularExpression(@"^\s*[0-9]{5}\s*$", ErrorMessage = "Delivery zip code must be 5 digits.")]
     public string? DeliveryZipCode { get; set; }
 }
 

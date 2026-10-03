@@ -12,8 +12,9 @@ public sealed partial class ZipCodeListAttribute : ValidationAttribute
 {
     public const int MaxCount = 50;
 
-    // [0-9], not \d: in .NET \d also matches non-ASCII digits like "١٢٣٤٥"
-    [GeneratedRegex("^[0-9]{5}$")]
+    // [0-9], not \d: in .NET \d also matches non-ASCII digits like "١٢٣٤٥".
+    // \A...\z, not ^...$: $ also matches before a trailing newline.
+    [GeneratedRegex(@"\A[0-9]{5}\z")]
     private static partial Regex ZipCodeRegex();
 
     protected override ValidationResult? IsValid(object? value, ValidationContext validationContext)

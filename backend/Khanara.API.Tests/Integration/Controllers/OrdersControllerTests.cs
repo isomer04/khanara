@@ -63,7 +63,7 @@ public class OrdersControllerTests : BaseIntegrationTest
 
         // Act
         var response = await client.PostAsJsonAsync("/api/orders",
-            DeliveryOrder(profile.Id, dish.Id, "  12 Main St, Apt 3 ", "12345"));
+            DeliveryOrder(profile.Id, dish.Id, "  12 Main St, Apt 3 ", " 12345 "));
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.Created);

@@ -463,6 +463,16 @@ describe('Checkout', () => {
       expect(fixture.nativeElement.textContent).toContain('This kitchen offers pickup only.');
     });
 
+    it('should say delivery options failed to load and keep pickup', () => {
+      mockCookService.getCook.mockReturnValue(throwError(() => new Error('Server error')));
+      fixture.detectChanges();
+
+      expect(mockToastService.error).toHaveBeenCalledWith(
+        "Couldn't load delivery options. Pickup is still available.");
+      expect(component['offersDelivery']()).toBe(false);
+      expect(component['fulfillmentType']()).toBe(FulfillmentType.Pickup);
+    });
+
     it('should handle long notes', () => {
       const mockOrder = buildOrder({ id: 1 });
       mockOrderService.placeOrder = vi.fn().mockReturnValue(of(mockOrder));

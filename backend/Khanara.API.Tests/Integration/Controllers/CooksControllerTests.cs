@@ -57,6 +57,7 @@ public class CooksControllerTests : BaseIntegrationTest
     [InlineData("123")]
     [InlineData("1000100")]
     [InlineData("١٢٣٤٥")] // Arabic-Indic digits
+    [InlineData("12345\n")] // $ alone would match before the newline
     public async Task CreateCookProfile_InvalidZipCode_ReturnsBadRequest(string zipCode)
     {
         // Arrange

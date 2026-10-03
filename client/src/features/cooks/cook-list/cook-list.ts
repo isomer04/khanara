@@ -50,9 +50,11 @@ export class CookList implements OnInit, AfterViewInit {
     // Filters live in the URL so they survive reload/back and can be shared
     // (the home page's cuisine chips link to /cooks?cuisine=N).
     this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(params => {
-      const cuisine = Number(params.get('cuisine'));
+      // Number('') is 0 (Bengali), so an empty ?cuisine= must count as unset
+      const cuisineParam = params.get('cuisine');
+      const cuisine = Number(cuisineParam);
       this.selectedCuisine.set(
-        params.has('cuisine') && cuisine in CuisineTagLabels ? cuisine : undefined);
+        cuisineParam && cuisine in CuisineTagLabels ? cuisine : undefined);
 
       const zip = params.get('zip') ?? '';
       this.activeZip.set(/^\d{5}$/.test(zip) ? zip : '');

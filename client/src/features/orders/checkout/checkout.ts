@@ -56,6 +56,7 @@ export class Checkout implements OnInit {
           this.kitchenName.set(cook.kitchenName);
           this.serviceZipCodes.set(cook.serviceZipCodes);
         },
+        error: () => this.toast.error("Couldn't load delivery options. Pickup is still available."),
       });
     }
   }

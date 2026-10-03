@@ -1,4 +1,5 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { finalize } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { NgOptimizedImage } from '@angular/common';
@@ -18,6 +19,7 @@ export class MemberEdit implements OnInit {
   private toast = inject(ToastService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
+  private destroyRef = inject(DestroyRef);
 
   protected member = signal<MemberProfile | null>(null);
   protected loading = signal(false);
@@ -32,9 +34,13 @@ export class MemberEdit implements OnInit {
     const user = this.accountService.currentUser();
     if (!user) return;
 
-    if (this.route.snapshot.paramMap.get('id') !== user.id) {
-      this.router.navigate(['/members', user.id], { replaceUrl: true });
-    }
+    // Only your own profile is editable. Angular reuses this instance when just
+    // :id changes, so watch the param rather than reading the snapshot once.
+    this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(params => {
+      if (params.get('id') !== user.id) {
+        this.router.navigate(['/members', user.id], { replaceUrl: true });
+      }
+    });
 
     this.loading.set(true);
     this.memberService.getMember(user.id).pipe(

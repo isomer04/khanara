@@ -5,6 +5,7 @@ import { ReviewService } from '../../../core/services/review-service';
 import { ToastService } from '../../../core/services/toast-service';
 import { Review } from '../../../types/review';
 import { DatePipe } from '@angular/common';
+import { finalize } from 'rxjs';
 
 @Component({
   selector: 'app-review-card',
@@ -30,13 +31,13 @@ export class ReviewCard implements OnInit {
   protected showReplyForm = signal(false);
 
   ngOnInit() {
-    this.reviewService.getReviewByOrder(this.orderId).subscribe({
+    this.reviewService.getReviewByOrder(this.orderId).pipe(
+      finalize(() => this.loading.set(false))
+    ).subscribe({
       next: r => this.review.set(r),
       error: (err: HttpErrorResponse) => {
         if (err.status !== 404) this.toast.error('Failed to load review');
-        this.loading.set(false);
       },
-      complete: () => this.loading.set(false),
     });
   }
 
@@ -65,13 +66,14 @@ export class ReviewCard implements OnInit {
       orderId: this.orderId,
       rating: this.selectedRating(),
       comment: this.comment().trim() || undefined,
-    }).subscribe({
+    }).pipe(
+      finalize(() => this.submitting.set(false))
+    ).subscribe({
       next: r => {
         this.review.set(r);
         this.toast.success('Review submitted!');
       },
       error: () => this.toast.error('Failed to submit review'),
-      complete: () => this.submitting.set(false),
     });
   }
 
@@ -80,7 +82,9 @@ export class ReviewCard implements OnInit {
     const r = this.review();
     if (!reply || !r) return;
     this.submittingReply.set(true);
-    this.reviewService.addReply(r.id, { reply }).subscribe({
+    this.reviewService.addReply(r.id, { reply }).pipe(
+      finalize(() => this.submittingReply.set(false))
+    ).subscribe({
       next: updated => {
         this.review.set(updated);
         this.showReplyForm.set(false);
@@ -88,7 +92,6 @@ export class ReviewCard implements OnInit {
         this.toast.success('Reply posted!');
       },
       error: () => this.toast.error('Failed to post reply'),
-      complete: () => this.submittingReply.set(false),
     });
   }
 }

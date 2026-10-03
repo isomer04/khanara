@@ -49,6 +49,22 @@ describe('errorInterceptor', () => {
     expect(mockToast.error).toHaveBeenCalledWith('Unauthorized');
   });
 
+  it("shows the server's message on 401 when it sends one", () => {
+    get('/api/account/login');
+    httpTesting
+      .expectOne('/api/account/login')
+      .flush('Invalid credentials', { status: 401, statusText: 'Unauthorized' });
+    expect(mockToast.error).toHaveBeenCalledWith('Invalid credentials');
+  });
+
+  it('explains a 429 rate limit', () => {
+    get('/api/account/login');
+    httpTesting
+      .expectOne('/api/account/login')
+      .flush(null, { status: 429, statusText: 'Too Many Requests' });
+    expect(mockToast.error).toHaveBeenCalledWith('Too many attempts. Please wait a minute and try again.');
+  });
+
   it('does not show Unauthorized toast on 401 for /favorites/ids endpoint', () => {
     get('/api/favorites/ids');
     httpTesting

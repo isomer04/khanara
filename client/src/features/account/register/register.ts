@@ -3,6 +3,7 @@ import { AbstractControl, NonNullableFormBuilder, ReactiveFormsModule, Validatio
 import { AccountService } from '../../../core/services/account-service';
 import { TextInput } from '../../../shared/text-input/text-input';
 import { Router, RouterLink } from '@angular/router';
+import { finalize } from 'rxjs';
 
 /** Minimum age allowed to register (years). */
 const MIN_AGE = 13;
@@ -22,6 +23,7 @@ export class Register {
   cancelRegister = output<boolean>();
   protected currentStep = signal(1);
   protected validationErrors = signal<string[]>([]);
+  protected submitting = signal(false);
 
   /** Organically scattered emoji items for the background field. */
   protected readonly emojiField = this.buildEmojiField();
@@ -145,7 +147,10 @@ export class Register {
       ...this.profileForm.getRawValue(),
     };
 
-    this.accountService.register(formData).subscribe({
+    this.submitting.set(true);
+    this.accountService.register(formData).pipe(
+      finalize(() => this.submitting.set(false))
+    ).subscribe({
       next: () => this.router.navigateByUrl('/cooks'),
       error: (error: string[]) => this.validationErrors.set(error),
     });

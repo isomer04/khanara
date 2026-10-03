@@ -23,6 +23,14 @@ public class CreateOrderDto
 
     [MaxLength(500)]
     public string? Notes { get; set; }
+
+    // Required when FulfillmentType is Delivery (checked in OrdersController)
+    [MaxLength(300)]
+    public string? DeliveryAddress { get; set; }
+
+    // Surrounding whitespace is allowed; OrdersController trims it before saving
+    [RegularExpression(@"^\s*[0-9]{5}\s*$", ErrorMessage = "Delivery zip code must be 5 digits.")]
+    public string? DeliveryZipCode { get; set; }
 }
 
 public class CreateOrderItemDto

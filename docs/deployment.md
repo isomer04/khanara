@@ -82,7 +82,7 @@ AllowedHosts                           *
 
 1. In the Stripe dashboard, create a webhook endpoint for `https://khanara.shop/api/payments/webhook`
 2. Subscribe to `checkout.session.completed` and `charge.refunded`
-3. Store the signing secret: `gcloud secrets versions add khanara-stripe-webhook-secret --data-file=-`
+3. Put the signing secret in `third_party_secrets["stripe-webhook-secret"]` in `infra/terraform/prod/terraform.tfvars`, bump `third_party_secrets_version`, and run `terraform apply`. `terraform output stripe_webhook_url` shows the endpoint URL to register (the run.app URL until `enable_domain_mapping` is on)
 
 ---
 

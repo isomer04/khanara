@@ -52,6 +52,56 @@ public class CooksControllerTests : BaseIntegrationTest
         roles.Should().Contain("Cook");
     }
 
+    [Theory]
+    [InlineData("abc")]
+    [InlineData("123")]
+    [InlineData("1000100")]
+    [InlineData("١٢٣٤٥")] // Arabic-Indic digits
+    [InlineData("12345\n")] // $ alone would match before the newline
+    public async Task CreateCookProfile_InvalidZipCode_ReturnsBadRequest(string zipCode)
+    {
+        // Arrange
+        var user = await AuthHelper.CreateUserAsync("user@test.com", "UserPass123!@#", "Eater");
+        var client = await CreateAuthenticatedClient("user@test.com", "UserPass123!@#", "Eater");
+
+        var createDto = new CreateCookProfileDto
+        {
+            KitchenName = "My Kitchen",
+            CuisineTags = [CuisineTag.Indian],
+            ServiceZipCodes = ["12345", zipCode]
+        };
+
+        // Act
+        var response = await client.PostAsJsonAsync("/api/cooks", createDto);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await DbContext.CookProfiles.AnyAsync(p => p.AppUserId == user.Id)).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task CreateCookProfile_DuplicateZipCodes_AreStoredOnce()
+    {
+        // Arrange
+        var user = await AuthHelper.CreateUserAsync("user@test.com", "UserPass123!@#", "Eater");
+        var client = await CreateAuthenticatedClient("user@test.com", "UserPass123!@#", "Eater");
+
+        var createDto = new CreateCookProfileDto
+        {
+            KitchenName = "My Kitchen",
+            CuisineTags = [CuisineTag.Indian],
+            ServiceZipCodes = ["12345", "12345", "67890"]
+        };
+
+        // Act
+        var response = await client.PostAsJsonAsync("/api/cooks", createDto);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var profileDto = await response.Content.ReadFromJsonAsync<CookProfileDto>();
+        profileDto!.ServiceZipCodes.Should().Equal("12345", "67890");
+    }
+
     [Fact]
     public async Task CreateCookProfile_ExistingProfile_ReturnsBadRequest()
     {

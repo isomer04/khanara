@@ -274,6 +274,26 @@ describe('ImageUpload', () => {
       expect((component as any).fileToUpload).toBe(file);
     });
 
+    it('should preview a file chosen with the file picker', async () => {
+      const input: HTMLInputElement = fixture.nativeElement.querySelector('#dropzone-file');
+      const file = new File(['test'], 'picked.png', { type: 'image/png' });
+      // jsdom can't build a real FileList, so stand one in
+      Object.defineProperty(input, 'files', { value: [file], configurable: true });
+
+      input.dispatchEvent(new Event('change'));
+      fixture.detectChanges();
+
+      expect((component as any).fileToUpload).toBe(file);
+      await waitFor(() => {
+        expect((component as any).imageSrc()).toBeTruthy();
+      }, { fixture });
+    });
+
+    it('should only offer supported image types in the file picker', () => {
+      const input: HTMLInputElement = fixture.nativeElement.querySelector('#dropzone-file');
+      expect(input.accept).toBe('image/jpeg,image/png,image/webp');
+    });
+
     it('should preview image when file is dropped', async () => {
       const label = fixture.nativeElement.querySelector('label[for="dropzone-file"]');
       

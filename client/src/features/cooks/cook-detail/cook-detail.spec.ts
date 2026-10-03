@@ -23,6 +23,7 @@ import { CookService } from '../../../core/services/cook-service';
 import { CartService } from '../../../core/services/cart-service';
 import { AccountService } from '../../../core/services/account-service';
 import { ToastService } from '../../../core/services/toast-service';
+import { ConfirmDialogService } from '../../../core/services/confirm-dialog-service';
 import { buildCookProfile, buildDish, buildUser } from '../../../testing/test-data-builders';
 import { CuisineTag } from '../../../types/cook-profile';
 import { DietaryTags } from '../../../types/dish';
@@ -32,6 +33,7 @@ import {
   createMockAccountService,
   createMockToastService,
   createMockRouter,
+  createMockConfirmDialogService,
 } from '../../../testing/mock-services';
 
 describe('CookDetail', () => {
@@ -43,9 +45,11 @@ describe('CookDetail', () => {
   let mockToastService: ReturnType<typeof createMockToastService>;
   let mockRouter: ReturnType<typeof createMockRouter>;
   let mockActivatedRoute: any;
+  let mockConfirmDialog: ReturnType<typeof createMockConfirmDialogService>;
 
   beforeEach(async () => {
     mockCookService = createMockCookService();
+    mockConfirmDialog = createMockConfirmDialogService();
     mockCartService = createMockCartService({
       cookProfileId: signal<number | null>(null),
     });
@@ -77,6 +81,7 @@ describe('CookDetail', () => {
         { provide: ToastService, useValue: mockToastService },
         { provide: Router, useValue: mockRouter },
         { provide: ActivatedRoute, useValue: mockActivatedRoute },
+        { provide: ConfirmDialogService, useValue: mockConfirmDialog },
         // Pass-through loader so NgOptimizedImage doesn't crash in jsdom
         { provide: IMAGE_LOADER, useValue: (config: any) => config.src },
         // Suppress preconnect warnings for test image URLs
@@ -206,34 +211,50 @@ describe('CookDetail', () => {
       expect(mockToastService.success).toHaveBeenCalledWith('Pasta added to cart');
     });
 
-    it('should redirect to home when user is not logged in', () => {
+    it('should open the login prompt and come back here when user is not logged in', () => {
       mockAccountService.currentUser = signal(null);
+      mockRouter.url = '/cooks/1';
       const mockDish = buildDish({ id: 1, name: 'Pasta', price: 15.99 });
 
       component.addToCart(mockDish);
 
-      expect(mockRouter.navigate).toHaveBeenCalledWith(['/']);
+      expect(mockRouter.navigate).toHaveBeenCalledWith(['/'], {
+        queryParams: { login: 1, returnUrl: '/cooks/1' },
+      });
+      expect(mockToastService.info).toHaveBeenCalledWith('Log in to start an order');
       expect(mockCartService.addItem).not.toHaveBeenCalled();
     });
 
-    it('should show message when adding from different cook', () => {
+    it('should ask before replacing a cart from a different cook', async () => {
       mockCartService.cookProfileId = signal(2);
+      mockCartService.itemCount = signal(3);
       const mockDish = buildDish({ id: 1, name: 'Pasta', price: 15.99 });
       const mockCook = buildCookProfile({ id: 1, dishes: [mockDish] });
       mockCookService.getCook.mockReturnValue(of(mockCook));
       fixture.detectChanges();
 
-      component.addToCart(mockDish);
+      await component.addToCart(mockDish);
 
-      expect(mockToastService.success).toHaveBeenCalledWith(
-        'Cart cleared — starting a new order with this cook'
-      );
+      expect(mockConfirmDialog.confirm).toHaveBeenCalled();
       expect(mockCartService.addItem).toHaveBeenCalledWith(1, {
         dishId: mockDish.id,
         dishName: mockDish.name,
         price: mockDish.price,
         quantity: 1,
       });
+    });
+
+    it('should keep the existing cart when the user declines', async () => {
+      mockCartService.cookProfileId = signal(2);
+      mockCartService.itemCount = signal(3);
+      mockConfirmDialog.confirm.mockResolvedValue(false);
+      const mockDish = buildDish({ id: 1, name: 'Pasta', price: 15.99 });
+      mockCookService.getCook.mockReturnValue(of(buildCookProfile({ id: 1, dishes: [mockDish] })));
+      fixture.detectChanges();
+
+      await component.addToCart(mockDish);
+
+      expect(mockCartService.addItem).not.toHaveBeenCalled();
     });
 
     it('should not add to cart when cook is not loaded', () => {

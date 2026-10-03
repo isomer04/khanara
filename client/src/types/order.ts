@@ -53,6 +53,8 @@ export type Order = {
   totalAmount: number;
   scheduledFor?: string;
   notes?: string;
+  deliveryAddress?: string;
+  deliveryZipCode?: string;
   cancellationReason?: string;
   createdAt: string;
   updatedAt: string;
@@ -66,6 +68,8 @@ export type CreateOrderDto = {
   paymentMethod: PaymentMethod;
   scheduledFor?: string;
   notes?: string;
+  deliveryAddress?: string;
+  deliveryZipCode?: string;
 };
 
 export type UpdateOrderStatusDto = {

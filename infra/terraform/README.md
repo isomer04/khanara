@@ -21,7 +21,7 @@ terraform plan -out tfplan; terraform apply tfplan
 
 Things to know:
 
-- **No secrets in state.** The DB password and JWT key are generated with ephemeral resources and sent through write-only arguments. Stripe/Cloudinary keys are added with `gcloud secrets versions add` (see the runbook).
+- **No secrets in state.** The DB password and JWT key are generated with ephemeral resources and sent through write-only arguments. Stripe/Cloudinary keys come from the ephemeral `third_party_secrets` variable in `terraform.tfvars` and go through the same write-only arguments.
 - **CI owns the image.** `deploy-gcp.yml` rolls out new images; Terraform ignores image changes. A `terraform plan` right after a deploy should show no changes.
-- **Rotate** by bumping `db_password_version` / `token_key_version`. The apply rolls out a new Cloud Run revision with the new value.
+- **Rotate** by bumping `db_password_version` / `token_key_version`, or `third_party_secrets_version` after editing the Stripe/Cloudinary keys. The apply rolls out a new Cloud Run revision with the new value.
 - `*.tfvars`, `backend.hcl`, state and `.terraform/` are gitignored. Only the `*.example` files are committed.

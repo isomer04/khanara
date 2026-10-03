@@ -44,7 +44,7 @@
                 <a [routerLink]="['/cook/dishes', dish.id, 'edit']" class="btn btn-sm btn-outline flex-1">Edit</a>
                 <button
                   class="btn btn-sm btn-error flex-1"
-                  (click)="deleteDish(dish.id)"
+                  (click)="deleteDish(dish)"
                   [disabled]="deletingId() === dish.id"
                 >
                   @if (deletingId() === dish.id) {

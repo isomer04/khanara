@@ -1,5 +1,7 @@
-import { Component, inject, OnInit, signal, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Component, computed, DestroyRef, inject, OnInit, signal, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { finalize } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { NgOptimizedImage } from '@angular/common';
 import { CookService } from '../../../core/services/cook-service';
@@ -15,6 +17,9 @@ import { environment } from '../../../environments/environment';
 })
 export class CookList implements OnInit, AfterViewInit {
   private cookService = inject(CookService);
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
+  private destroyRef = inject(DestroyRef);
 
   @ViewChild('filterContainer') filterContainer!: ElementRef<HTMLDivElement>;
 
@@ -26,13 +31,37 @@ export class CookList implements OnInit, AfterViewInit {
   }));
   protected selectedCuisine = signal<number | undefined>(undefined);
   protected zipCode = signal<string>('');
+  // The zip the current results are filtered by (zipCode is the input's live value)
+  protected activeZip = signal<string>('');
+  protected zipError = signal<string | null>(null);
+
+  protected resultsLabel = computed(() => {
+    const n = this.cooks().length;
+    const cooks = n === 1 ? '1 cook' : `${n} cooks`;
+    const zip = this.activeZip();
+    return zip ? `${cooks} delivering to ${zip}` : `${cooks} available`;
+  });
   
   // Arrow visibility signals
   protected showLeftArrow = signal(false);
   protected showRightArrow = signal(false);
 
   ngOnInit() {
-    this.loadCooks();
+    // Filters live in the URL so they survive reload/back and can be shared
+    // (the home page's cuisine chips link to /cooks?cuisine=N).
+    this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(params => {
+      // Number('') is 0 (Bengali), so an empty ?cuisine= must count as unset
+      const cuisineParam = params.get('cuisine');
+      const cuisine = Number(cuisineParam);
+      this.selectedCuisine.set(
+        cuisineParam && cuisine in CuisineTagLabels ? cuisine : undefined);
+
+      const zip = params.get('zip') ?? '';
+      this.activeZip.set(/^\d{5}$/.test(zip) ? zip : '');
+      this.zipCode.set(this.activeZip());
+
+      this.loadCooks();
+    });
   }
 
   ngAfterViewInit() {
@@ -42,20 +71,30 @@ export class CookList implements OnInit, AfterViewInit {
 
   loadCooks() {
     this.loading.set(true);
-    this.cookService.getCooks(1, 12, this.selectedCuisine(), this.zipCode()).subscribe({
+    this.cookService.getCooks(1, 12, this.selectedCuisine(), this.activeZip()).pipe(
+      finalize(() => this.loading.set(false))
+    ).subscribe({
       next: result => this.cooks.set(result.items),
-      error: () => this.loading.set(false),
-      complete: () => this.loading.set(false),
+      error: () => {},
     });
   }
 
   onCuisineChange(value: string) {
-    this.selectedCuisine.set(value === '' ? undefined : Number(value));
-    this.loadCooks();
+    this.updateFilters({ cuisine: value === '' ? null : Number(value) });
   }
 
   onZipCodeChange() {
-    this.loadCooks();
+    const zip = this.zipCode().trim();
+    if (zip && !/^\d{5}$/.test(zip)) {
+      this.zipError.set('Enter a 5-digit zip code');
+      return;
+    }
+    this.zipError.set(null);
+    this.updateFilters({ zip: zip || null });
+  }
+
+  private updateFilters(queryParams: { cuisine?: number | null; zip?: string | null }) {
+    this.router.navigate([], { relativeTo: this.route, queryParams, queryParamsHandling: 'merge' });
   }
 
   scrollLeft() {

@@ -49,9 +49,7 @@ export class OrderChat implements OnInit, OnDestroy {
 
     this.subs.push(
       this.hub.messageReceived$.subscribe((data) => {
-        if (data.orderId === this.orderId) {
-          this.messages.update((m) => [...m, data.message]);
-        }
+        if (data.orderId === this.orderId) this.addMessage(data.message);
       }),
       this.hub.presenceChanged$.subscribe((p) => {
         if (p.orderId === this.orderId) this.presence.set(p);
@@ -78,16 +76,22 @@ export class OrderChat implements OnInit, OnDestroy {
     this.subs.forEach((s) => s.unsubscribe());
   }
 
+  private addMessage(message: OrderMessage) {
+    this.messages.update((m) => (m.some((x) => x.id === message.id) ? m : [...m, message]));
+  }
+
   send() {
     const content = this.newMessage().trim();
     if (!content) return;
 
     this.sending.set(true);
     // POST to REST endpoint — the server persists the message and broadcasts it
-    // back to all hub clients in the order group via OrderMessageReceived.
-    // We do NOT push the message locally here to avoid duplicates.
+    // to the order group via OrderMessageReceived. Add it from the response too,
+    // so the sender sees it even when the hub isn't connected; addMessage skips
+    // whichever copy arrives second.
     this.orderService.sendMessage(this.orderId, content).subscribe({
-      next: () => {
+      next: (message) => {
+        this.addMessage(message);
         this.newMessage.set('');
         this.sending.set(false);
       },

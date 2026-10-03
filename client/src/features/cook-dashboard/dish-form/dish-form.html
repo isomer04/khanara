@@ -3,38 +3,38 @@
     {{ isEditMode() ? 'Edit dish' : 'New dish' }}
   </h1>
 
-  @if (loading() && !isEditMode()) {
+  @if (loading()) {
     <div class="flex justify-center py-20">
       <span class="loading loading-spinner loading-lg"></span>
     </div>
   } @else {
     <div class="card bg-base-100 shadow-md p-8 mb-6">
       <div class="form-control mb-6">
-        <label class="block mb-2">
+        <label class="block mb-2" for="dish-name">
           <span class="label-text font-semibold">Name *</span>
         </label>
-        <input [(ngModel)]="form.name" name="name" type="text" class="input input-bordered w-full" maxlength="100" />
+        <input [(ngModel)]="form.name" id="dish-name" name="name" type="text" class="input input-bordered w-full" maxlength="100" />
       </div>
 
       <div class="form-control mb-6">
-        <label class="block mb-2">
+        <label class="block mb-2" for="dish-description">
           <span class="label-text font-semibold">Description</span>
         </label>
-        <textarea [(ngModel)]="form.description" name="description" class="textarea textarea-bordered w-full" rows="3" maxlength="500"></textarea>
+        <textarea [(ngModel)]="form.description" id="dish-description" name="description" class="textarea textarea-bordered w-full" rows="3" maxlength="500"></textarea>
       </div>
 
       <div class="grid grid-cols-2 gap-4 mb-4">
         <div class="form-control">
-          <label class="block mb-2">
+          <label class="block mb-2" for="dish-price">
             <span class="label-text font-semibold">Price ($) *</span>
           </label>
-          <input [(ngModel)]="form.price" name="price" type="number" min="0.01" step="0.01" class="input input-bordered w-full" />
+          <input [(ngModel)]="form.price" id="dish-price" name="price" type="number" min="0.01" step="0.01" class="input input-bordered w-full" />
         </div>
         <div class="form-control">
-          <label class="block mb-2">
+          <label class="block mb-2" for="dish-cuisine">
             <span class="label-text font-semibold">Cuisine *</span>
           </label>
-          <select [(ngModel)]="form.cuisineTag" name="cuisineTag" class="select select-bordered w-full">
+          <select [(ngModel)]="form.cuisineTag" id="dish-cuisine" name="cuisineTag" class="select select-bordered w-full">
             @for (tag of cuisineTags; track tag.value) {
               <option [value]="tag.value">{{ tag.label }}</option>
             }
@@ -44,17 +44,17 @@
 
       <div class="grid grid-cols-2 gap-4 mb-4">
         <div class="form-control">
-          <label class="block mb-2">
+          <label class="block mb-2" for="dish-portions">
             <span class="label-text font-semibold">Portions per batch *</span>
           </label>
-          <input [(ngModel)]="form.portionsPerBatch" name="portionsPerBatch" type="number" min="1" class="input input-bordered w-full" />
+          <input [(ngModel)]="form.portionsPerBatch" id="dish-portions" name="portionsPerBatch" type="number" min="1" step="1" class="input input-bordered w-full" />
         </div>
         @if (isEditMode()) {
           <div class="form-control">
-            <label class="block mb-2">
+            <label class="block mb-2" for="dish-portions-today">
               <span class="label-text font-semibold">Portions remaining today</span>
             </label>
-            <input [(ngModel)]="form.portionsRemainingToday" name="portionsRemainingToday" type="number" min="0" class="input input-bordered w-full" />
+            <input [(ngModel)]="form.portionsRemainingToday" id="dish-portions-today" name="portionsRemainingToday" type="number" min="0" step="1" class="input input-bordered w-full" />
           </div>
         }
       </div>
@@ -87,8 +87,18 @@
         </div>
       }
 
-      <button class="btn btn-primary w-full" (click)="submit()" [disabled]="loading()">
-        @if (loading()) {
+      @if (validationErrors().length > 0) {
+        <div class="alert alert-error mb-4" role="alert">
+          <ul>
+            @for (error of validationErrors(); track $index) {
+              <li>{{ error }}</li>
+            }
+          </ul>
+        </div>
+      }
+
+      <button class="btn btn-primary w-full" (click)="submit()" [disabled]="saving()">
+        @if (saving()) {
           <span class="loading loading-spinner"></span>
         }
         {{ isEditMode() ? 'Save changes' : 'Create dish' }}

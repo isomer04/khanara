@@ -10,11 +10,12 @@
 
     <!-- Kitchen name -->
     <div class="form-control">
-      <label class="label pb-1.5">
+      <label class="label pb-1.5" for="onboarding-kitchen-name">
         <span class="label-text font-semibold">Kitchen name <span class="text-error">*</span></span>
       </label>
       <input
         [(ngModel)]="form.kitchenName"
+        id="onboarding-kitchen-name"
         name="kitchenName"
         type="text"
         class="input input-bordered w-full"
@@ -25,11 +26,12 @@
 
     <!-- Bio -->
     <div class="form-control">
-      <label class="label pb-1.5">
+      <label class="label pb-1.5" for="onboarding-bio">
         <span class="label-text font-semibold">Bio <span class="text-base-content/40 font-normal">(optional)</span></span>
       </label>
       <textarea
         [(ngModel)]="form.bio"
+        id="onboarding-bio"
         name="bio"
         class="textarea textarea-bordered w-full resize-none leading-relaxed"
         placeholder="Tell guests about yourself and your cooking — your background, what you specialize in, what makes your food special..."
@@ -65,12 +67,13 @@
 
     <!-- Zip codes -->
     <div class="form-control">
-      <label class="label pb-1.5">
+      <label class="label pb-1.5" for="onboarding-zip-codes">
         <span class="label-text font-semibold">Zip codes you serve</span>
-        <span class="label-text-alt text-base-content/40">Comma-separated</span>
+        <span class="label-text-alt text-base-content/40">Comma-separated, 5 digits each</span>
       </label>
       <input
         [(ngModel)]="form.serviceZipCodesRaw"
+        id="onboarding-zip-codes"
         name="zipCodes"
         type="text"
         class="input input-bordered w-full"

@@ -191,18 +191,10 @@ The service starts on Google's placeholder "hello" image, which is served at the
 
 ### Phase 3: Third-party secrets
 
-1. In Stripe, create a webhook endpoint for `https://khanara.shop/api/payments/webhook` with the events `checkout.session.completed` and `charge.refunded`. Stripe doesn't need the site to be live for this.
-2. Load the four secrets. Use **Git Bash**: PowerShell pipes can add a trailing newline to the secret.
+1. In Stripe, create a webhook endpoint for the `stripe_webhook_url` output with the events `checkout.session.completed` and `charge.refunded`. Stripe doesn't need the site to be live for this.
+2. Fill in `third_party_secrets` (and `cloudinary_cloud_name`) in `terraform.tfvars`, bump `third_party_secrets_version`, and apply.
 
-```bash
-export CLOUDSDK_CONFIG=~/.gcloud-khanara
-for s in cloudinary-api-key cloudinary-api-secret stripe-secret-key stripe-webhook-secret; do
-  read -rsp "$s: " v; echo
-  printf '%s' "$v" | gcloud secrets versions add "khanara-$s" --data-file=-
-done
-```
-
-Cloud Run reads the `latest` version when an instance starts. The first real deploy (Phase 4) picks these up.
+The variable is ephemeral, so the values go straight to Secret Manager through write-only arguments and never reach the state or plan file. That also means Terraform can't detect an edited value: bump `third_party_secrets_version` every time you change one. Cloud Run pins these versions too, so the apply rolls out a revision that reads them.
 
 ### Phase 4: Connect GitHub and deploy
 
@@ -252,7 +244,7 @@ Merge this PR. CI runs, then **Deploy to Cloud Run** builds the image and rolls 
 - A JWT key rotation logs everyone out.
 - If an apply ever fails between updating the DB user and writing the secret, bump the version again. Both get a fresh matching password.
 
-**Placeholder secrets.** Terraform creates a `REPLACE_ME` version 1 for the four third-party secrets, and your real values sit on top of it as `latest`. Don't destroy those version-1 entries by hand. If Terraform recreated one, it would become `latest` again.
+**Third-party secrets.** Edit `third_party_secrets` in `terraform.tfvars` and bump `third_party_secrets_version`. Don't add versions with `gcloud secrets versions add`: Cloud Run is pinned to the Terraform-managed version and won't see them.
 
 **Rollback.** Revert traffic with `gcloud run services update-traffic khanara --region us-central1 --to-revisions <previous-revision>=100`.
 

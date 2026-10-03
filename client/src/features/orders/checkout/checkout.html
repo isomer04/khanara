@@ -45,17 +45,55 @@
             />
             <span>Pickup</span>
           </label>
-          <label class="flex items-center gap-2 cursor-pointer">
+          <label class="flex items-center gap-2"
+                 [class.cursor-pointer]="offersDelivery()"
+                 [class.opacity-60]="!offersDelivery()">
             <input
               type="radio"
               name="fulfillment"
               class="radio radio-primary"
+              [disabled]="!offersDelivery()"
               [checked]="fulfillmentType() === FulfillmentType.Delivery"
               (change)="setFulfillment(FulfillmentType.Delivery)"
             />
             <span>Delivery</span>
           </label>
         </div>
+        @if (serviceZipCodes() !== null && !offersDelivery()) {
+          <p class="text-sm text-gray-500 mt-2">This kitchen offers pickup only.</p>
+        }
+
+        @if (fulfillmentType() === FulfillmentType.Delivery) {
+          <div class="flex flex-col gap-3 mt-4">
+            <div>
+              <label class="block mb-1 text-sm font-semibold" for="delivery-address">Delivery address</label>
+              <input
+                id="delivery-address"
+                type="text"
+                class="input input-bordered w-full"
+                autocomplete="street-address"
+                maxlength="300"
+                placeholder="Street, apartment, city"
+                [value]="deliveryAddress()"
+                (input)="deliveryAddress.set($any($event.target).value)"
+              />
+            </div>
+            <div>
+              <label class="block mb-1 text-sm font-semibold" for="delivery-zip">Zip code</label>
+              <input
+                id="delivery-zip"
+                type="text"
+                inputmode="numeric"
+                class="input input-bordered w-full sm:max-w-40"
+                autocomplete="postal-code"
+                maxlength="5"
+                [value]="deliveryZipCode()"
+                (input)="deliveryZipCode.set($any($event.target).value)"
+              />
+              <p class="text-xs text-gray-500 mt-1">Delivers to: {{ serviceZipCodes()?.join(', ') }}</p>
+            </div>
+          </div>
+        }
       </div>
     </div>
 

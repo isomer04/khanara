@@ -457,6 +457,35 @@ public class ReviewsControllerTests : BaseIntegrationTest
     }
 
     [Fact]
+    public async Task GetReviewByOrder_NoReviewYet_ReturnsNoContent()
+    {
+        // Arrange: a 404 here sends the client's error interceptor to /not-found,
+        // which hid delivered orders (and the review form) entirely.
+        var (eater, _, _, _, order) = await CreateDeliveredOrderScenario();
+        var eaterClient = await CreateClientForUser(eater);
+
+        // Act
+        var response = await eaterClient.GetAsync($"/api/reviews/order/{order.Id}");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
+    [Fact]
+    public async Task GetReviewByOrder_UnknownOrder_ReturnsNotFound()
+    {
+        // Arrange
+        var (eater, _, _, _, _) = await CreateDeliveredOrderScenario();
+        var eaterClient = await CreateClientForUser(eater);
+
+        // Act
+        var response = await eaterClient.GetAsync("/api/reviews/order/999999");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
     public async Task SubmitReview_WithoutAuthentication_ReturnsUnauthorized()
     {
         // Arrange

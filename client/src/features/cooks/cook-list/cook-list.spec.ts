@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { CookList } from './cook-list';
@@ -60,46 +60,84 @@ describe('CookList', () => {
   });
 
   describe('filtering', () => {
-    it('should filter by cuisine when cuisine is selected', () => {
+    it('should filter by cuisine when cuisine is selected', async () => {
       fixture.detectChanges();
       vi.mocked(mockCookService.getCooks).mockClear();
 
       component.onCuisineChange('1'); // CuisineTag.Indian = 1
+      await fixture.whenStable();
 
       expect(component.selectedCuisine()).toBe(CuisineTag.Indian);
       expect(mockCookService.getCooks).toHaveBeenCalledWith(1, 12, CuisineTag.Indian, '');
+      expect(TestBed.inject(Router).url).toBe('/?cuisine=1');
     });
 
-    it('should clear cuisine filter when empty value is selected', () => {
-      component.selectedCuisine.set(CuisineTag.Italian);
+    it('should clear cuisine filter when empty value is selected', async () => {
+      await TestBed.inject(Router).navigateByUrl('/?cuisine=1');
       fixture.detectChanges();
       vi.mocked(mockCookService.getCooks).mockClear();
 
       component.onCuisineChange('');
+      await fixture.whenStable();
 
       expect(component.selectedCuisine()).toBeUndefined();
       expect(mockCookService.getCooks).toHaveBeenCalledWith(1, 12, undefined, '');
     });
 
-    it('should filter by zip code', () => {
+    it('should filter by zip code', async () => {
       fixture.detectChanges();
       vi.mocked(mockCookService.getCooks).mockClear();
       component.zipCode.set('12345');
 
       component.onZipCodeChange();
+      await fixture.whenStable();
 
       expect(mockCookService.getCooks).toHaveBeenCalledWith(1, 12, undefined, '12345');
     });
 
-    it('should apply both cuisine and zip code filters', () => {
+    it('should reject a zip code that is not 5 digits', async () => {
       fixture.detectChanges();
       vi.mocked(mockCookService.getCooks).mockClear();
-      component.selectedCuisine.set(CuisineTag.Mexican);
-      component.zipCode.set('90210');
+      component.zipCode.set('12ab');
 
-      component.loadCooks();
+      component.onZipCodeChange();
+      await fixture.whenStable();
 
-      expect(mockCookService.getCooks).toHaveBeenCalledWith(1, 12, CuisineTag.Mexican, '90210');
+      expect(component.zipError()).toBe('Enter a 5-digit zip code');
+      expect(mockCookService.getCooks).not.toHaveBeenCalled();
+    });
+
+    it('should restore both filters from the URL', async () => {
+      await TestBed.inject(Router).navigateByUrl('/?cuisine=11&zip=90210');
+      fixture.detectChanges();
+
+      expect(component.selectedCuisine()).toBe(CuisineTag.Thai);
+      expect(component.zipCode()).toBe('90210');
+      expect(mockCookService.getCooks).toHaveBeenLastCalledWith(1, 12, CuisineTag.Thai, '90210');
+    });
+
+    it('should treat an empty cuisine in the URL as unset, not Bengali', async () => {
+      await TestBed.inject(Router).navigateByUrl('/?cuisine=');
+      fixture.detectChanges();
+
+      expect(component.selectedCuisine()).toBeUndefined();
+      expect(mockCookService.getCooks).toHaveBeenLastCalledWith(1, 12, undefined, '');
+    });
+
+    it('should ignore invalid filter values in the URL', async () => {
+      await TestBed.inject(Router).navigateByUrl('/?cuisine=999&zip=abc');
+      fixture.detectChanges();
+
+      expect(mockCookService.getCooks).toHaveBeenLastCalledWith(1, 12, undefined, '');
+    });
+  });
+
+  describe('results label', () => {
+    it('should use the singular for one cook', () => {
+      mockCookService.getCooks.mockReturnValue(of(buildPaginatedResult([buildCookProfile()], 1, 12)));
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.textContent).toContain('1 cook available');
     });
   });
 

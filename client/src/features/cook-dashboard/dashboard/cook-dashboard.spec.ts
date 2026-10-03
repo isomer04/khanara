@@ -8,6 +8,8 @@ import { CookDashboard } from './cook-dashboard';
 import { CookService } from '../../../core/services/cook-service';
 import { DishService } from '../../../core/services/dish-service';
 import { ToastService } from '../../../core/services/toast-service';
+import { ConfirmDialogService } from '../../../core/services/confirm-dialog-service';
+import { createMockConfirmDialogService } from '../../../testing/mock-services';
 import { buildCookProfile, buildDish } from '../../../testing/test-data-builders';
 
 describe('CookDashboard', () => {
@@ -16,6 +18,7 @@ describe('CookDashboard', () => {
   let mockCookService: any;
   let mockDishService: any;
   let mockToastService: any;
+  let mockConfirmDialog: ReturnType<typeof createMockConfirmDialogService>;
 
   beforeEach(async () => {
     const mockProfile = buildCookProfile({
@@ -40,6 +43,8 @@ describe('CookDashboard', () => {
       error: vi.fn(),
     };
 
+    mockConfirmDialog = createMockConfirmDialogService();
+
     await TestBed.configureTestingModule({
       imports: [CookDashboard],
       providers: [
@@ -49,6 +54,7 @@ describe('CookDashboard', () => {
         { provide: CookService, useValue: mockCookService },
         { provide: DishService, useValue: mockDishService },
         { provide: ToastService, useValue: mockToastService },
+        { provide: ConfirmDialogService, useValue: mockConfirmDialog },
       ],
     }).compileComponents();
 
@@ -116,45 +122,59 @@ describe('CookDashboard', () => {
   });
 
   describe('deleteDish', () => {
-    it('should call dishService.deleteDish with correct id', () => {
-      component.deleteDish(10);
-      
+    const dish10 = () => component.dishes().find(d => d.id === 10)!;
+
+    it('should ask for confirmation with the dish name', async () => {
+      await component.deleteDish(dish10());
+
+      expect(mockConfirmDialog.confirm).toHaveBeenCalledWith('Delete "Biryani"?');
+    });
+
+    it('should not delete when the confirmation is cancelled', async () => {
+      mockConfirmDialog.confirm.mockResolvedValue(false);
+
+      await component.deleteDish(dish10());
+
+      expect(mockDishService.deleteDish).not.toHaveBeenCalled();
+      expect(component.dishes().length).toBe(2);
+    });
+
+    it('should call dishService.deleteDish with correct id', async () => {
+      await component.deleteDish(dish10());
+
       expect(mockDishService.deleteDish).toHaveBeenCalledWith(10);
     });
 
     it('should remove dish from list after successful deletion', async () => {
       const initialCount = component.dishes().length;
-      
-      component.deleteDish(10);
-      await fixture.whenStable();
-      
+
+      await component.deleteDish(dish10());
+
       expect(component.dishes().length).toBe(initialCount - 1);
       expect(component.dishes().find(d => d.id === 10)).toBeUndefined();
     });
 
     it('should show success toast after deletion', async () => {
-      component.deleteDish(10);
-      await fixture.whenStable();
-      
+      await component.deleteDish(dish10());
+
       expect(mockToastService.success).toHaveBeenCalledWith('Dish removed');
     });
 
     it('should clear deletingId after successful deletion', async () => {
-      component.deleteDish(10);
-      await fixture.whenStable();
-      
+      await component.deleteDish(dish10());
+
       expect(component.deletingId()).toBeNull();
     });
 
-    it('should show error toast when deletion fails', async () => {
+    it('should show error toast and clear deletingId when deletion fails', async () => {
       mockDishService.deleteDish.mockReturnValue(
         throwError(() => new Error('Delete failed'))
       );
-      
-      component.deleteDish(10);
-      await fixture.whenStable();
-      
+
+      await component.deleteDish(dish10());
+
       expect(mockToastService.error).toHaveBeenCalledWith('Failed to delete dish');
+      expect(component.deletingId()).toBeNull();
     });
 
     it('should not remove dish from list when deletion fails', async () => {
@@ -162,10 +182,9 @@ describe('CookDashboard', () => {
         throwError(() => new Error('Delete failed'))
       );
       const initialCount = component.dishes().length;
-      
-      component.deleteDish(10);
-      await fixture.whenStable();
-      
+
+      await component.deleteDish(dish10());
+
       expect(component.dishes().length).toBe(initialCount);
     });
   });

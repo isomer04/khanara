@@ -1,6 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { catchError, EMPTY, finalize, switchMap } from 'rxjs';
 import { CookService } from '../../../core/services/cook-service';
 import { AccountService } from '../../../core/services/account-service';
 import { ToastService } from '../../../core/services/toast-service';
@@ -58,24 +59,42 @@ export class CookOnboarding {
       .map(z => z.trim())
       .filter(z => z.length > 0);
 
+    const invalidZips = zipCodes.filter(z => !/^\d{5}$/.test(z));
+    if (invalidZips.length > 0) {
+      this.toast.error(`Zip codes must be 5 digits: ${invalidZips.join(', ')}`);
+      return;
+    }
+
     this.loading.set(true);
     this.cookService.createCookProfile({
       kitchenName: this.form.kitchenName,
       bio: this.form.bio || undefined,
       cuisineTags: this.form.selectedCuisineTags,
       serviceZipCodes: zipCodes,
-    }).subscribe({
-      next: () => {
-        const user = this.accountService.currentUser();
-        if (user) {
-          user.roles = [...user.roles, 'Cook'];
-          this.accountService.currentUser.set({ ...user });
-        }
+    }).pipe(
+      // The current access token predates the Cook role, so cook-only endpoints
+      // would 403 until the next refresh. Get a token that carries the role now.
+      switchMap(() => this.accountService.refreshToken().pipe(
+        // The profile exists now, so a resubmit would fail. Signing in again
+        // gets a token with the Cook role.
+        catchError(() => {
+          this.toast.warning('Your kitchen was created. Please log in again to open your dashboard.');
+          this.accountService.logout();
+          this.router.navigate(['/'], { queryParams: { login: 1, returnUrl: '/cook/dashboard' } });
+          return EMPTY;
+        })
+      )),
+      finalize(() => this.loading.set(false))
+    ).subscribe({
+      next: user => {
+        this.accountService.setCurrentUser(user);
         this.toast.success('Welcome to Khanara! Your kitchen is ready.');
         this.router.navigateByUrl('/cook/dashboard');
       },
-      error: err => this.toast.error(err.error),
-      complete: () => this.loading.set(false),
+      // The error interceptor already toasts plain 400s; model-state 400s arrive as string[]
+      error: err => {
+        if (Array.isArray(err)) this.toast.error(err.join(' '));
+      },
     });
   }
 }

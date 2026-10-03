@@ -50,6 +50,17 @@ public class OrdersController(
         if (cookProfile == null) return NotFound("Cook profile not found");
         if (!cookProfile.IsAcceptingOrders) return BadRequest("This cook is not accepting orders right now");
 
+        string? deliveryAddress = null, deliveryZipCode = null;
+        if (dto.FulfillmentType == FulfillmentType.Delivery)
+        {
+            deliveryAddress = dto.DeliveryAddress?.Trim();
+            deliveryZipCode = dto.DeliveryZipCode?.Trim();
+            if (string.IsNullOrEmpty(deliveryAddress) || string.IsNullOrEmpty(deliveryZipCode))
+                return BadRequest("A delivery address and zip code are required for delivery");
+            if (!cookProfile.ServiceZipCodes.Contains(deliveryZipCode))
+                return BadRequest($"{cookProfile.KitchenName} doesn't deliver to {deliveryZipCode}");
+        }
+
         var dishIds = dto.Items.Select(i => i.DishId).Distinct().ToList();
 
         // Validate all dishes belong to this cook and are available
@@ -73,7 +84,9 @@ public class OrdersController(
             FulfillmentType = dto.FulfillmentType,
             PaymentMethod = dto.PaymentMethod,
             ScheduledFor = dto.ScheduledFor,
-            Notes = dto.Notes
+            Notes = dto.Notes,
+            DeliveryAddress = deliveryAddress,
+            DeliveryZipCode = deliveryZipCode
         };
 
         foreach (var itemDto in dto.Items)
@@ -293,6 +306,8 @@ public class OrdersController(
         TotalAmount = o.TotalAmount,
         ScheduledFor = o.ScheduledFor,
         Notes = o.Notes,
+        DeliveryAddress = o.DeliveryAddress,
+        DeliveryZipCode = o.DeliveryZipCode,
         CancellationReason = o.CancellationReason,
         CreatedAt = o.CreatedAt,
         UpdatedAt = o.UpdatedAt,

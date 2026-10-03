@@ -16,6 +16,9 @@ vi.mock('@microsoft/signalr', async (importOriginal) => ({
     withAutomaticReconnect() {
       return this;
     }
+    configureLogging() {
+      return this;
+    }
     build() {
       return build();
     }
@@ -25,9 +28,11 @@ vi.mock('@microsoft/signalr', async (importOriginal) => ({
 // A connection whose start() stays pending until the test calls finishStart().
 function fakeConnection() {
   let finishStart!: () => void;
+  let reconnected!: () => void;
   const connection = {
     state: HubConnectionState.Disconnected,
     on: vi.fn(),
+    onreconnected: vi.fn((cb: () => void) => (reconnected = cb)),
     start: vi.fn(() => {
       connection.state = HubConnectionState.Connecting;
       return new Promise<void>((resolve) => {
@@ -48,7 +53,7 @@ function fakeConnection() {
       return Promise.resolve();
     }),
   };
-  return { connection, finishStart: () => finishStart() };
+  return { connection, finishStart: () => finishStart(), reconnect: () => reconnected() };
 }
 
 describe('OrderHubService', () => {
@@ -114,6 +119,23 @@ describe('OrderHubService', () => {
     service.disconnect();
 
     expect(connection.stop).toHaveBeenCalled();
+  });
+
+  it('should rejoin joined orders after an automatic reconnect', async () => {
+    const { connection, finishStart, reconnect } = fakeConnection();
+    build.mockReturnValue(connection);
+
+    service.connect();
+    finishStart();
+    await service.joinOrder(3);
+    await service.joinOrder(4);
+    await service.leaveOrder(4);
+    connection.invoke.mockClear();
+
+    reconnect();
+
+    expect(connection.invoke).toHaveBeenCalledTimes(1);
+    expect(connection.invoke).toHaveBeenCalledWith('JoinOrder', 3);
   });
 
   it('should not connect or invoke when no user is logged in', async () => {

@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { Router } from '@angular/router';
-import { of, throwError, Observable } from 'rxjs';
+import { ActivatedRoute, convertToParamMap, ParamMap, Router } from '@angular/router';
+import { of, throwError, Observable, BehaviorSubject } from 'rxjs';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { MemberEdit } from './member-edit';
 import { MemberService, MemberProfile } from '../../../core/services/member-service';
@@ -29,6 +29,7 @@ describe('MemberEdit', () => {
   let mockAccountService: any;
   let mockToastService: any;
   let mockRouter: any;
+  let paramMap: BehaviorSubject<ParamMap>;
 
   const mockUser: User = {
     id: '1',
@@ -71,6 +72,8 @@ describe('MemberEdit', () => {
       navigateByUrl: vi.fn(),
     };
 
+    paramMap = new BehaviorSubject(convertToParamMap({ id: mockUser.id }));
+
     await TestBed.configureTestingModule({
       imports: [MemberEdit],
       providers: [
@@ -78,6 +81,7 @@ describe('MemberEdit', () => {
         { provide: AccountService, useValue: mockAccountService },
         { provide: ToastService, useValue: mockToastService },
         { provide: Router, useValue: mockRouter },
+        { provide: ActivatedRoute, useValue: { paramMap } },
       ],
     }).compileComponents();
 
@@ -438,6 +442,33 @@ describe('MemberEdit', () => {
         (btn: any) => btn.textContent?.includes('Back')
       );
       expect(backButton).toBeTruthy();
+    });
+
+    it('should not redirect when the URL is the current user', () => {
+      expect(mockRouter.navigate).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Another member\'s URL', () => {
+    it('should redirect to the current user\'s own profile', () => {
+      paramMap.next(convertToParamMap({ id: 'someone-else' }));
+      mockMemberService.getMember.mockReturnValue(of(mockMember));
+      fixture.detectChanges();
+
+      expect(mockRouter.navigate).toHaveBeenCalledWith(['/members', mockUser.id], { replaceUrl: true });
+      expect(mockMemberService.getMember).toHaveBeenCalledWith(mockUser.id);
+    });
+
+    it('should redirect when only :id changes on the same instance', () => {
+      mockMemberService.getMember.mockReturnValue(of(mockMember));
+      fixture.detectChanges();
+      expect(mockRouter.navigate).not.toHaveBeenCalled();
+
+      paramMap.next(convertToParamMap({ id: 'someone-else' }));
+
+      expect(fixture.componentInstance).toBe(component);
+      expect(mockRouter.navigate).toHaveBeenCalledWith(['/members', mockUser.id], { replaceUrl: true });
+      expect(mockMemberService.getMember).toHaveBeenCalledTimes(1);
     });
   });
 

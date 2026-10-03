@@ -10,7 +10,7 @@ third_party_secrets = {
   "cloudinary-api-key"    = ""
   "cloudinary-api-secret" = ""
   "stripe-secret-key"     = ""
-  "stripe-webhook-secret" = "" # whsec_... of the endpoint in `terraform output stripe_webhook_url`
+  "stripe-webhook-secret" = "pending" # until the endpoint exists; then the whsec_... of `terraform output stripe_webhook_url`
 }
 # third_party_secrets_version = 2
 

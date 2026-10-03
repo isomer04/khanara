@@ -55,8 +55,11 @@ resource "google_secret_manager_secret_version" "third_party" {
   secret_data_wo         = var.third_party_secrets[each.key]
   secret_data_wo_version = var.third_party_secrets_version
 
-  # Cloud Run pins this version (cloudrun.tf); keep the old one until the new
-  # revision is serving.
+  # Cloud Run pins this version (cloudrun.tf). Leave replaced versions in
+  # Secret Manager so older revisions can still start after a traffic rollback;
+  # destroy them by hand once they're no longer needed.
+  deletion_policy = "ABANDON"
+
   lifecycle {
     create_before_destroy = true
   }

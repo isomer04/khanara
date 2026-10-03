@@ -54,16 +54,16 @@
       <div class="max-w-7xl mx-auto px-6">
         <div class="flex gap-2 py-3 overflow-x-auto" style="scrollbar-width: none">
           <a routerLink="/cooks" class="btn btn-sm rounded-full shrink-0 btn-ghost font-medium">🍽 All Cuisines</a>
-          <a routerLink="/cooks" class="btn btn-sm rounded-full shrink-0 btn-ghost">🍛 Bengali</a>
-          <a routerLink="/cooks" class="btn btn-sm rounded-full shrink-0 btn-ghost">🌶️ Indian</a>
-          <a routerLink="/cooks" class="btn btn-sm rounded-full shrink-0 btn-ghost">🫓 Pakistani</a>
-          <a routerLink="/cooks" class="btn btn-sm rounded-full shrink-0 btn-ghost">🧆 Lebanese</a>
-          <a routerLink="/cooks" class="btn btn-sm rounded-full shrink-0 btn-ghost">🥙 Turkish</a>
-          <a routerLink="/cooks" class="btn btn-sm rounded-full shrink-0 btn-ghost">🍜 Thai</a>
-          <a routerLink="/cooks" class="btn btn-sm rounded-full shrink-0 btn-ghost">🥟 Chinese</a>
-          <a routerLink="/cooks" class="btn btn-sm rounded-full shrink-0 btn-ghost">🍱 Korean</a>
-          <a routerLink="/cooks" class="btn btn-sm rounded-full shrink-0 btn-ghost">🍲 Vietnamese</a>
-          <a routerLink="/cooks" class="btn btn-sm rounded-full shrink-0 btn-ghost">🍗 Filipino</a>
+          <a routerLink="/cooks" [queryParams]="{ cuisine: 0 }" class="btn btn-sm rounded-full shrink-0 btn-ghost">🍛 Bengali</a>
+          <a routerLink="/cooks" [queryParams]="{ cuisine: 1 }" class="btn btn-sm rounded-full shrink-0 btn-ghost">🌶️ Indian</a>
+          <a routerLink="/cooks" [queryParams]="{ cuisine: 2 }" class="btn btn-sm rounded-full shrink-0 btn-ghost">🫓 Pakistani</a>
+          <a routerLink="/cooks" [queryParams]="{ cuisine: 6 }" class="btn btn-sm rounded-full shrink-0 btn-ghost">🧆 Lebanese</a>
+          <a routerLink="/cooks" [queryParams]="{ cuisine: 10 }" class="btn btn-sm rounded-full shrink-0 btn-ghost">🥙 Turkish</a>
+          <a routerLink="/cooks" [queryParams]="{ cuisine: 11 }" class="btn btn-sm rounded-full shrink-0 btn-ghost">🍜 Thai</a>
+          <a routerLink="/cooks" [queryParams]="{ cuisine: 13 }" class="btn btn-sm rounded-full shrink-0 btn-ghost">🥟 Chinese</a>
+          <a routerLink="/cooks" [queryParams]="{ cuisine: 14 }" class="btn btn-sm rounded-full shrink-0 btn-ghost">🍱 Korean</a>
+          <a routerLink="/cooks" [queryParams]="{ cuisine: 12 }" class="btn btn-sm rounded-full shrink-0 btn-ghost">🍲 Vietnamese</a>
+          <a routerLink="/cooks" [queryParams]="{ cuisine: 15 }" class="btn btn-sm rounded-full shrink-0 btn-ghost">🍗 Filipino</a>
         </div>
       </div>
     </div>

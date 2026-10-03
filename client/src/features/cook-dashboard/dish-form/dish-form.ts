@@ -2,6 +2,7 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NgOptimizedImage } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
+import { finalize } from 'rxjs';
 import { DishService } from '../../../core/services/dish-service';
 import { CookService } from '../../../core/services/cook-service';
 import { ToastService } from '../../../core/services/toast-service';
@@ -24,6 +25,8 @@ export class DishForm implements OnInit {
   protected isEditMode = signal(false);
   protected dishId = signal<number | null>(null);
   protected loading = signal(false);
+  protected saving = signal(false);
+  protected validationErrors = signal<string[]>([]);
   protected photoUploading = signal(false);
   protected photos = signal<DishPhoto[]>([]);
 
@@ -50,10 +53,11 @@ export class DishForm implements OnInit {
       this.isEditMode.set(true);
       this.dishId.set(Number(id));
       this.loading.set(true);
-      this.dishService.getDish(Number(id)).subscribe({
+      this.dishService.getDish(Number(id)).pipe(
+        finalize(() => this.loading.set(false))
+      ).subscribe({
         next: dish => this.populateForm(dish),
         error: () => this.router.navigateByUrl('/cook/dashboard'),
-        complete: () => this.loading.set(false),
       });
     }
   }
@@ -80,12 +84,34 @@ export class DishForm implements OnInit {
     this.form.selectedDietaryTags = this.form.selectedDietaryTags ^ flag;
   }
 
+  private validate(): string[] {
+    const errors: string[] = [];
+    if (!this.form.name.trim()) errors.push('Name is required');
+    if (!(this.form.price > 0)) errors.push('Price must be greater than 0');
+    if (!Number.isInteger(this.form.portionsPerBatch) || this.form.portionsPerBatch < 1)
+      errors.push('Portions per batch must be a whole number of at least 1');
+    if (this.isEditMode() &&
+        (!Number.isInteger(this.form.portionsRemainingToday) || this.form.portionsRemainingToday < 0))
+      errors.push('Portions remaining today must be a whole number of 0 or more');
+    return errors;
+  }
+
+  // The error interceptor turns model-state 400s into a string[] and has
+  // already toasted any other 400, so only the list needs handling here.
+  private onSaveError = (err: unknown) => {
+    if (Array.isArray(err)) this.validationErrors.set(err);
+  };
+
   submit() {
-    this.loading.set(true);
+    const errors = this.validate();
+    this.validationErrors.set(errors);
+    if (errors.length) return;
+
+    this.saving.set(true);
 
     if (this.isEditMode()) {
       this.dishService.updateDish(this.dishId()!, {
-        name: this.form.name,
+        name: this.form.name.trim(),
         description: this.form.description || undefined,
         price: this.form.price,
         cuisineTag: this.form.cuisineTag,
@@ -93,30 +119,33 @@ export class DishForm implements OnInit {
         portionsPerBatch: this.form.portionsPerBatch,
         portionsRemainingToday: this.form.portionsRemainingToday,
         isAvailable: this.form.isAvailable,
-      }).subscribe({
+      }).pipe(
+        finalize(() => this.saving.set(false))
+      ).subscribe({
         next: () => {
           this.toast.success('Dish updated');
           this.router.navigateByUrl('/cook/dashboard');
         },
-        error: err => this.toast.error(err.error),
-        complete: () => this.loading.set(false),
+        error: this.onSaveError,
       });
     } else {
       this.dishService.createDish({
-        name: this.form.name,
+        name: this.form.name.trim(),
         description: this.form.description || undefined,
         price: this.form.price,
         cuisineTag: this.form.cuisineTag,
         dietaryTags: this.form.selectedDietaryTags,
         portionsPerBatch: this.form.portionsPerBatch,
-      }).subscribe({
+      }).pipe(
+        finalize(() => this.saving.set(false))
+      ).subscribe({
         next: dish => {
           this.dishId.set(dish.id);
+          this.form.portionsRemainingToday = dish.portionsRemainingToday;
           this.isEditMode.set(true);
           this.toast.success('Dish created! You can now add photos.');
         },
-        error: err => this.toast.error(err.error),
-        complete: () => this.loading.set(false),
+        error: this.onSaveError,
       });
     }
   }
@@ -128,10 +157,11 @@ export class DishForm implements OnInit {
       return;
     }
     this.photoUploading.set(true);
-    this.dishService.uploadPhoto(id, file).subscribe({
+    this.dishService.uploadPhoto(id, file).pipe(
+      finalize(() => this.photoUploading.set(false))
+    ).subscribe({
       next: photo => this.photos.set([...this.photos(), photo]),
-      error: () => this.toast.error('Failed to upload photo'),
-      complete: () => this.photoUploading.set(false),
+      error: () => {}, // the error interceptor shows the reason
     });
   }
 

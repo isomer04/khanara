@@ -55,6 +55,12 @@
             <span>· Note: {{ order()!.notes }}</span>
           }
         </div>
+        @if (order()!.fulfillmentType === FulfillmentType.Delivery && order()!.deliveryAddress) {
+          <p class="mt-2 text-sm">
+            <span class="text-gray-500">Deliver to:</span>
+            {{ order()!.deliveryAddress }}, {{ order()!.deliveryZipCode }}
+          </p>
+        }
       </div>
     </div>
 

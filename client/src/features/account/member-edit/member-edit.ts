@@ -2,7 +2,7 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { finalize } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { NgOptimizedImage } from '@angular/common';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { MemberService, MemberProfile } from '../../../core/services/member-service';
 import { AccountService } from '../../../core/services/account-service';
 import { ToastService } from '../../../core/services/toast-service';
@@ -17,6 +17,7 @@ export class MemberEdit implements OnInit {
   private accountService = inject(AccountService);
   private toast = inject(ToastService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
 
   protected member = signal<MemberProfile | null>(null);
   protected loading = signal(false);
@@ -30,6 +31,10 @@ export class MemberEdit implements OnInit {
   ngOnInit() {
     const user = this.accountService.currentUser();
     if (!user) return;
+
+    if (this.route.snapshot.paramMap.get('id') !== user.id) {
+      this.router.navigate(['/members', user.id], { replaceUrl: true });
+    }
 
     this.loading.set(true);
     this.memberService.getMember(user.id).pipe(

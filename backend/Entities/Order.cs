@@ -12,6 +12,9 @@ public class Order
     public decimal TotalAmount { get; set; }
     public DateTime? ScheduledFor { get; set; }
     public string? Notes { get; set; }
+    // Set only for FulfillmentType.Delivery
+    public string? DeliveryAddress { get; set; }
+    public string? DeliveryZipCode { get; set; }
     public string? CancellationReason { get; set; }
     public string? StripeSessionId { get; set; }
     public string? StripePaymentIntentId { get; set; }

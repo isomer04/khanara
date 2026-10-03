@@ -1,5 +1,6 @@
 import { Component, inject, Input, OnInit, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
+import { finalize } from 'rxjs';
 import { ReviewService } from '../../../core/services/review-service';
 import { Review } from '../../../types/review';
 import { Pagination } from '../../../types/pagination';
@@ -23,13 +24,14 @@ export class CookReviews implements OnInit {
   protected loadingMore = signal(false);
 
   ngOnInit() {
-    this.reviewService.getReviewsForCook(this.cookId, 1, 5).subscribe({
+    this.reviewService.getReviewsForCook(this.cookId, 1, 5).pipe(
+      finalize(() => this.loading.set(false))
+    ).subscribe({
       next: result => {
         this.reviews.set(result.items);
         this.meta.set(result.metadata);
       },
-      error: () => this.loading.set(false),
-      complete: () => this.loading.set(false),
+      error: () => {},
     });
   }
 
@@ -38,13 +40,14 @@ export class CookReviews implements OnInit {
     if (!m || m.currentPage >= m.totalPages) return;
     const nextPage = m.currentPage + 1;
     this.loadingMore.set(true);
-    this.reviewService.getReviewsForCook(this.cookId, nextPage, 5).subscribe({
+    this.reviewService.getReviewsForCook(this.cookId, nextPage, 5).pipe(
+      finalize(() => this.loadingMore.set(false))
+    ).subscribe({
       next: result => {
         this.reviews.update(prev => [...prev, ...result.items]);
         this.meta.set(result.metadata);
       },
-      error: () => this.loadingMore.set(false),
-      complete: () => this.loadingMore.set(false),
+      error: () => {},
     });
   }
 

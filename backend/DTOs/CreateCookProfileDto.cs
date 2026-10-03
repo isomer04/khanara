@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using Khanara.API.Entities;
+using Khanara.API.Helpers;
 
 namespace Khanara.API.DTOs;
 
@@ -14,5 +15,6 @@ public class CreateCookProfileDto
     [MinLength(1, ErrorMessage = "At least one cuisine tag is required")]
     public List<CuisineTag> CuisineTags { get; set; } = [];
 
+    [ZipCodeList]
     public List<string> ServiceZipCodes { get; set; } = [];
 }

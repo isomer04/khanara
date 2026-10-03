@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { Router } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, Router } from '@angular/router';
 import { of, throwError, Observable } from 'rxjs';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { MemberEdit } from './member-edit';
@@ -29,6 +29,7 @@ describe('MemberEdit', () => {
   let mockAccountService: any;
   let mockToastService: any;
   let mockRouter: any;
+  let mockRoute: { snapshot: { paramMap: ReturnType<typeof convertToParamMap> } };
 
   const mockUser: User = {
     id: '1',
@@ -71,6 +72,8 @@ describe('MemberEdit', () => {
       navigateByUrl: vi.fn(),
     };
 
+    mockRoute = { snapshot: { paramMap: convertToParamMap({ id: mockUser.id }) } };
+
     await TestBed.configureTestingModule({
       imports: [MemberEdit],
       providers: [
@@ -78,6 +81,7 @@ describe('MemberEdit', () => {
         { provide: AccountService, useValue: mockAccountService },
         { provide: ToastService, useValue: mockToastService },
         { provide: Router, useValue: mockRouter },
+        { provide: ActivatedRoute, useValue: mockRoute },
       ],
     }).compileComponents();
 
@@ -438,6 +442,21 @@ describe('MemberEdit', () => {
         (btn: any) => btn.textContent?.includes('Back')
       );
       expect(backButton).toBeTruthy();
+    });
+
+    it('should not redirect when the URL is the current user', () => {
+      expect(mockRouter.navigate).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Another member\'s URL', () => {
+    it('should redirect to the current user\'s own profile', () => {
+      mockRoute.snapshot.paramMap = convertToParamMap({ id: 'someone-else' });
+      mockMemberService.getMember.mockReturnValue(of(mockMember));
+      fixture.detectChanges();
+
+      expect(mockRouter.navigate).toHaveBeenCalledWith(['/members', mockUser.id], { replaceUrl: true });
+      expect(mockMemberService.getMember).toHaveBeenCalledWith(mockUser.id);
     });
   });
 

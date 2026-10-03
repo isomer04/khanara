@@ -1,7 +1,9 @@
-import { Component, inject, OnInit, signal, ViewEncapsulation } from '@angular/core';
+import { Component, DestroyRef, inject, OnInit, signal, ViewEncapsulation } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { finalize } from 'rxjs';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AccountService } from '../../services/account-service';
-import { Router, RouterLink, RouterLinkActive } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { ToastService } from '../../services/toast-service';
 import { themes } from '../theme';
 import { BusyService } from '../../services/busy-service';
@@ -22,6 +24,8 @@ export class Nav implements OnInit {
   protected busyService = inject(BusyService);
   protected cartService = inject(CartService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
+  private destroyRef = inject(DestroyRef);
   private toast = inject(ToastService);
   private fb = inject(NonNullableFormBuilder);
 
@@ -31,6 +35,7 @@ export class Nav implements OnInit {
   mobileMenuOpen = signal(false);
 
   protected loginOpen = signal(false);
+  private returnUrl: string | null = null;
 
   protected loginForm = this.fb.group({
     email: ['', [Validators.required, Validators.email]],
@@ -59,6 +64,21 @@ export class Nav implements OnInit {
 
   ngOnInit(): void {
     document.documentElement.setAttribute('data-theme', this.selectedTheme());
+
+    // authGuard and anonymous "add to order" send people to /?login=1&returnUrl=...
+    this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(params => {
+      if (params.get('login') !== '1') return;
+
+      const returnUrl = params.get('returnUrl');
+      // Only same-app paths; "//host" would be protocol-relative
+      this.returnUrl = returnUrl?.startsWith('/') && !returnUrl.startsWith('//') ? returnUrl : null;
+      this.router.navigate([], {
+        queryParams: { login: null, returnUrl: null },
+        queryParamsHandling: 'merge',
+        replaceUrl: true,
+      });
+      if (!this.accountService.currentUser()) this.openLoginModal();
+    });
   }
 
   openLoginModal() {
@@ -69,6 +89,7 @@ export class Nav implements OnInit {
 
   closeLoginModal() {
     this.loginOpen.set(false);
+    this.returnUrl = null;
     document.body.style.overflow = '';
     this.loginForm.reset();
   }
@@ -93,17 +114,17 @@ export class Nav implements OnInit {
     }
 
     this.loading.set(true);
-    this.accountService.login(this.loginForm.getRawValue()).subscribe({
+    // On failure the error interceptor toasts the server's message
+    this.accountService.login(this.loginForm.getRawValue()).pipe(
+      finalize(() => this.loading.set(false))
+    ).subscribe({
       next: () => {
+        const returnUrl = this.returnUrl;
         this.closeLoginModal();
-        this.router.navigateByUrl('/cooks');
+        this.router.navigateByUrl(returnUrl ?? '/cooks');
         this.toast.success('Logged in successfully');
       },
-      error: (error) => {
-        this.toast.error(error.error);
-        this.loading.set(false);
-      },
-      complete: () => this.loading.set(false),
+      error: () => {},
     });
   }
 

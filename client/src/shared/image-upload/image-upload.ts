@@ -37,6 +37,17 @@ export class ImageUpload {
     }
   }
 
+  onFileSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (file) {
+      this.previewImage(file);
+      this.fileToUpload = file;
+    }
+    // Reset so choosing the same file again still fires (change)
+    input.value = '';
+  }
+
   onCancel() {
     this.fileToUpload = null;
     this.imageSrc.set(null);

@@ -144,6 +144,14 @@ public class AppDbContext(DbContextOptions options) : IdentityDbContext<AppUser>
             .Property(o => o.TotalAmount)
             .HasPrecision(18, 2);
 
+        modelBuilder.Entity<Order>()
+            .Property(o => o.DeliveryAddress)
+            .HasMaxLength(300);
+
+        modelBuilder.Entity<Order>()
+            .Property(o => o.DeliveryZipCode)
+            .HasMaxLength(5);
+
         modelBuilder.Entity<OrderItem>()
             .Property(i => i.UnitPriceSnapshot)
             .HasPrecision(18, 2);

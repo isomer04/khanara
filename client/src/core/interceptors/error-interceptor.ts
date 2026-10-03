@@ -30,11 +30,14 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
             const silentEndpoints = ['/favorites/ids', '/account/refresh-token'];
             const shouldShowToast = !silentEndpoints.some(endpoint => req.url.includes(endpoint));
             if (shouldShowToast) {
-              toast.error('Unauthorized');
+              toast.error(typeof error.error === 'string' && error.error ? error.error : 'Unauthorized');
             }
             break;
           case 404:
             router.navigateByUrl('/not-found')
+            break;
+          case 429:
+            toast.error('Too many attempts. Please wait a minute and try again.');
             break;
           case 500:
             const navigationExtras: NavigationExtras = {state: {error: error.error}}

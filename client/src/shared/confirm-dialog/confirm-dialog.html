@@ -1,4 +1,4 @@
-<dialog #dialogRef class="modal">
+<dialog #dialogRef class="modal" (close)="cancel()">
     <div class="modal-box">
         <h3 class="font-bold text-log">{{message}}</h3>
         <p class="py-2">This action cannot be undone</p>

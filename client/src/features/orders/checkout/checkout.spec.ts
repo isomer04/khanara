@@ -9,9 +9,10 @@ import { Checkout } from './checkout';
 import { CartService } from '../../../core/services/cart-service';
 import { OrderService } from '../../../core/services/order-service';
 import { ToastService } from '../../../core/services/toast-service';
-import { buildOrder, buildCartItem } from '../../../testing/test-data-builders';
+import { buildOrder, buildCartItem, buildCookProfile } from '../../../testing/test-data-builders';
 import { FulfillmentType, PaymentMethod } from '../../../types/order';
-import { createMockCartService, createMockOrderService, createMockToastService, createMockRouter } from '../../../testing/mock-services';
+import { createMockCartService, createMockOrderService, createMockToastService, createMockRouter, createMockCookService } from '../../../testing/mock-services';
+import { CookService } from '../../../core/services/cook-service';
 
 describe('Checkout', () => {
   let component: Checkout;
@@ -20,6 +21,7 @@ describe('Checkout', () => {
   let mockOrderService: ReturnType<typeof createMockOrderService>;
   let mockToastService: ReturnType<typeof createMockToastService>;
   let mockRouter: ReturnType<typeof createMockRouter>;
+  let mockCookService: ReturnType<typeof createMockCookService>;
 
   beforeEach(async () => {
     mockCartService = createMockCartService({
@@ -31,6 +33,11 @@ describe('Checkout', () => {
     mockOrderService = createMockOrderService();
     mockToastService = createMockToastService();
     mockRouter = createMockRouter();
+    mockCookService = createMockCookService({
+      getCook: vi.fn().mockReturnValue(
+        of(buildCookProfile({ id: 1, kitchenName: 'Spice House', serviceZipCodes: ['10001', '10002'] }))
+      ),
+    });
 
     await TestBed.configureTestingModule({
       imports: [Checkout],
@@ -42,6 +49,7 @@ describe('Checkout', () => {
         { provide: OrderService, useValue: mockOrderService },
         { provide: ToastService, useValue: mockToastService },
         { provide: Router, useValue: mockRouter },
+        { provide: CookService, useValue: mockCookService },
       ],
     }).compileComponents();
 
@@ -198,14 +206,24 @@ describe('Checkout', () => {
   });
 
   describe('error handling', () => {
-    it('should handle error when placing order fails', () => {
+    it('should re-enable the form when placing the order fails', () => {
       mockOrderService.placeOrder = vi.fn().mockReturnValue(throwError(() => new Error('Network error')));
       fixture.detectChanges();
 
       component.placeOrder();
 
-      expect(mockToastService.error).toHaveBeenCalledWith('Failed to place order');
       expect(component.submitting()).toBe(false);
+    });
+
+    it('should show model-state validation errors from the server', () => {
+      mockOrderService.placeOrder = vi.fn().mockReturnValue(
+        throwError(() => ['Quantity must be between 1 and 50.'])
+      );
+      fixture.detectChanges();
+
+      component.placeOrder();
+
+      expect(mockToastService.error).toHaveBeenCalledWith('Quantity must be between 1 and 50.');
     });
 
     it('should handle error when stripe checkout fails', () => {
@@ -381,19 +399,68 @@ describe('Checkout', () => {
       );
     });
 
-    it('should handle delivery fulfillment type', () => {
+    it('should send the delivery address with a delivery order', () => {
       const mockOrder = buildOrder({ id: 1 });
       mockOrderService.placeOrder = vi.fn().mockReturnValue(of(mockOrder));
       fixture.detectChanges();
       component.setFulfillment(FulfillmentType.Delivery);
+      component['deliveryAddress'].set(' 12 Main St, Apt 3 ');
+      component['deliveryZipCode'].set('10002');
 
       component.placeOrder();
 
       expect(mockOrderService.placeOrder).toHaveBeenCalledWith(
         expect.objectContaining({
           fulfillmentType: FulfillmentType.Delivery,
+          deliveryAddress: '12 Main St, Apt 3',
+          deliveryZipCode: '10002',
         })
       );
+    });
+
+    it('should not send a delivery address with a pickup order', () => {
+      mockOrderService.placeOrder = vi.fn().mockReturnValue(of(buildOrder({ id: 1 })));
+      fixture.detectChanges();
+      component['deliveryAddress'].set('12 Main St');
+      component['deliveryZipCode'].set('10002');
+
+      component.placeOrder();
+
+      expect(mockOrderService.placeOrder).toHaveBeenCalledWith(
+        expect.objectContaining({ deliveryAddress: undefined, deliveryZipCode: undefined })
+      );
+    });
+
+    it('should require an address before placing a delivery order', () => {
+      mockOrderService.placeOrder = vi.fn();
+      fixture.detectChanges();
+      component.setFulfillment(FulfillmentType.Delivery);
+
+      component.placeOrder();
+
+      expect(mockToastService.error).toHaveBeenCalledWith('Enter your delivery address and zip code');
+      expect(mockOrderService.placeOrder).not.toHaveBeenCalled();
+    });
+
+    it('should block delivery to a zip code the cook does not serve', () => {
+      mockOrderService.placeOrder = vi.fn();
+      fixture.detectChanges();
+      component.setFulfillment(FulfillmentType.Delivery);
+      component['deliveryAddress'].set('12 Main St');
+      component['deliveryZipCode'].set('99999');
+
+      component.placeOrder();
+
+      expect(mockToastService.error).toHaveBeenCalledWith("Spice House doesn't deliver to 99999");
+      expect(mockOrderService.placeOrder).not.toHaveBeenCalled();
+    });
+
+    it('should disable delivery when the cook serves no zip codes', () => {
+      mockCookService.getCook.mockReturnValue(of(buildCookProfile({ id: 1, serviceZipCodes: [] })));
+      fixture.detectChanges();
+
+      expect(component['offersDelivery']()).toBe(false);
+      expect(fixture.nativeElement.textContent).toContain('This kitchen offers pickup only.');
     });
 
     it('should handle long notes', () => {
@@ -461,7 +528,7 @@ describe('Checkout', () => {
       expect(mockCartService.clear).not.toHaveBeenCalled();
     });
 
-    it('should show generic error message for order placement failure', () => {
+    it('should leave HTTP error toasts to the error interceptor', () => {
       mockOrderService.placeOrder = vi.fn().mockReturnValue(
         throwError(() => new Error('Unknown error'))
       );
@@ -469,7 +536,7 @@ describe('Checkout', () => {
 
       component.placeOrder();
 
-      expect(mockToastService.error).toHaveBeenCalledWith('Failed to place order');
+      expect(mockToastService.error).not.toHaveBeenCalled();
     });
 
     it('should show specific error message for stripe checkout failure', () => {

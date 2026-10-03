@@ -187,16 +187,15 @@ describe('Nav - Login', () => {
   });
 
   describe('Failed Login', () => {
-    it('should display error message when login fails', () => {
-      const errorMessage = 'Invalid credentials';
+    it('should leave the error toast to the error interceptor', () => {
       mockAccountService.login.mockReturnValue(
-        throwError(() => ({ error: errorMessage }))
+        throwError(() => ({ status: 401, error: 'Invalid credentials' }))
       );
       component['loginForm'].setValue({ email: 'test@example.com', password: 'wrongpassword' });
 
       component.login();
 
-      expect(mockToastService.error).toHaveBeenCalledWith(errorMessage);
+      expect(mockToastService.error).not.toHaveBeenCalled();
     });
 
     it('should not navigate when login fails', () => {
@@ -210,11 +209,7 @@ describe('Nav - Login', () => {
       expect(mockRouter.navigateByUrl).not.toHaveBeenCalled();
     });
 
-    it.skip('should set loading state to false after failed login', () => {
-      // TODO: Unskip once RxJS error path async timing is handled in Vitest
-      // Tracked in: backlog — improve loading-state test coverage for error paths
-      // SKIPPED: This test requires async handling that's difficult to test with Vitest
-      // The loading state is properly tested in other tests
+    it('should set loading state to false after failed login', () => {
       mockAccountService.login.mockReturnValue(
         throwError(() => ({ error: 'Invalid credentials' }))
       );
@@ -226,15 +221,36 @@ describe('Nav - Login', () => {
       expect(component.loading()).toBe(false);
     });
 
-    it('should handle network errors', () => {
+    it('should keep the login modal open after a failed login', () => {
       mockAccountService.login.mockReturnValue(
-        throwError(() => ({ error: 'Network error' }))
+        throwError(() => ({ status: 0, error: 'Network error' }))
       );
+      component['loginOpen'].set(true);
       component['loginForm'].setValue({ email: 'test@example.com', password: 'password123' });
 
       component.login();
 
-      expect(mockToastService.error).toHaveBeenCalledWith('Network error');
+      expect(component['loginOpen']()).toBe(true);
+    });
+  });
+
+  describe('Return URL', () => {
+    it('should go back to the guarded page after logging in', () => {
+      mockAccountService.login.mockReturnValue(of({}));
+      component['returnUrl'] = '/orders/7';
+      component['loginForm'].setValue({ email: 'test@example.com', password: 'password123' });
+
+      component.login();
+
+      expect(mockRouter.navigateByUrl).toHaveBeenCalledWith('/orders/7');
+    });
+
+    it('should forget the return URL when the modal is dismissed', () => {
+      component['returnUrl'] = '/orders/7';
+
+      component.closeLoginModal();
+
+      expect(component['returnUrl']).toBeNull();
     });
   });
 

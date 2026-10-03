@@ -4,7 +4,7 @@
   <div class="mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4">
     <div>
       <h1 class="text-4xl font-bold" style="font-family: var(--font-display)">Browse Cooks</h1>
-      <p class="text-base-content/55 mt-1.5 text-sm">{{ cooks().length }} cooks available in your area</p>
+      <p class="text-base-content/55 mt-1.5 text-sm">{{ resultsLabel() }}</p>
     </div>
     
     <div class="form-control w-full sm:max-w-xs">
@@ -15,14 +15,20 @@
           aria-label="Filter by Zip Code"
           class="input input-bordered join-item w-full"
           [ngModel]="zipCode()"
-          (ngModelChange)="zipCode.set($event)"
+          (ngModelChange)="zipCode.set($event); zipError.set(null)"
           (keyup.enter)="onZipCodeChange()"
           maxlength="5"
+          inputmode="numeric"
+          [attr.aria-invalid]="zipError() ? true : null"
+          aria-describedby="zip-error"
         />
         <button class="btn btn-primary join-item" (click)="onZipCodeChange()">
           Search
         </button>
       </div>
+      @if (zipError()) {
+        <p id="zip-error" class="text-error text-xs mt-1">{{ zipError() }}</p>
+      }
     </div>
   </div>
 

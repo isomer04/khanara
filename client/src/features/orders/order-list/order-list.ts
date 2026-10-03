@@ -1,6 +1,7 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CurrencyPipe, DatePipe } from '@angular/common';
+import { finalize } from 'rxjs';
 import { OrderService } from '../../../core/services/order-service';
 import { AccountService } from '../../../core/services/account-service';
 import { Order, OrderStatus, OrderStatusLabels } from '../../../types/order';
@@ -33,9 +34,8 @@ export class OrderList implements OnInit {
       ? this.orderService.getCookOrders()
       : this.orderService.getEaterOrders();
 
-    req.subscribe({
+    req.pipe(finalize(() => this.loading.set(false))).subscribe({
       next: result => this.orders.set(result.items),
-      complete: () => this.loading.set(false),
     });
   }
 

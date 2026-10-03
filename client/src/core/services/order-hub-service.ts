@@ -3,6 +3,7 @@ import {
   HubConnection,
   HubConnectionBuilder,
   HubConnectionState,
+  LogLevel,
 } from '@microsoft/signalr';
 import { Subject } from 'rxjs';
 import { environment } from '../../environments/environment';
@@ -18,6 +19,8 @@ export class OrderHubService {
   // Settles when `connection` has started. Hub calls wait on it: invoking on a
   // connection that is still connecting is rejected by the SignalR client.
   private started?: Promise<void>;
+  // Orders this connection has joined; groups don't survive a reconnect.
+  private joinedOrders = new Set<number>();
 
   readonly statusChanged$ = new Subject<OrderStatusChanged>();
   readonly messageReceived$ = new Subject<{ orderId: number; message: OrderMessage }>();
@@ -26,15 +29,25 @@ export class OrderHubService {
   connect() {
     if (this.connection && this.connection.state !== HubConnectionState.Disconnected) return;
 
-    const user = this.accountService.currentUser();
-    if (!user) return;
+    if (!this.accountService.currentUser()) return;
 
     this.connection = new HubConnectionBuilder()
       .withUrl(this.hubUrl + 'order', {
-        accessTokenFactory: () => user.token,
+        // Read on every (re)connect so a reconnect uses the refreshed token
+        accessTokenFactory: () => this.accountService.currentUser()?.token ?? '',
       })
       .withAutomaticReconnect()
+      // Information level logs the WebSocket URL, which carries the access token
+      .configureLogging(environment.production ? LogLevel.Warning : LogLevel.Information)
       .build();
+
+    this.connection.onreconnected(() => {
+      for (const orderId of this.joinedOrders) {
+        this.connection?.invoke('JoinOrder', orderId).catch((err) =>
+          console.error('OrderHub error:', err)
+        );
+      }
+    });
 
     this.connection.on('OrderStatusChanged', (data: OrderStatusChanged) =>
       this.statusChanged$.next(data)
@@ -60,15 +73,18 @@ export class OrderHubService {
     this.connection?.stop().catch((err) => console.error(err));
     this.connection = undefined;
     this.started = undefined;
+    this.joinedOrders.clear();
   }
 
   joinOrder(orderId: number) {
+    this.joinedOrders.add(orderId);
     return this.invokeWhenStarted('JoinOrder', orderId).catch((err) =>
       console.error('OrderHub error:', err)
     );
   }
 
   leaveOrder(orderId: number) {
+    this.joinedOrders.delete(orderId);
     return this.invokeWhenStarted('LeaveOrder', orderId);
   }
 

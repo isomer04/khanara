@@ -44,6 +44,104 @@ public class OrdersControllerTests : BaseIntegrationTest
         return (eater, cook, profile, dish);
     }
 
+    private static CreateOrderDto DeliveryOrder(int cookProfileId, int dishId, string? address, string? zipCode) => new()
+    {
+        CookProfileId = cookProfileId,
+        FulfillmentType = FulfillmentType.Delivery,
+        PaymentMethod = PaymentMethod.Cash,
+        Items = [new CreateOrderItemDto { DishId = dishId, Quantity = 1 }],
+        DeliveryAddress = address,
+        DeliveryZipCode = zipCode
+    };
+
+    [Fact]
+    public async Task PlaceOrder_Delivery_SavesAddressForServedZipCode()
+    {
+        // Arrange (CookProfileBuilder serves zip 12345 by default)
+        var (_, _, profile, dish) = await CreateOrderScenario();
+        var client = await CreateAuthenticatedClient("eater@test.com", "EaterPass123!@#", "Eater");
+
+        // Act
+        var response = await client.PostAsJsonAsync("/api/orders",
+            DeliveryOrder(profile.Id, dish.Id, "  12 Main St, Apt 3 ", "12345"));
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var orderDto = await response.Content.ReadFromJsonAsync<OrderDto>();
+        orderDto!.DeliveryAddress.Should().Be("12 Main St, Apt 3");
+        orderDto.DeliveryZipCode.Should().Be("12345");
+
+        var dbOrder = await DbContext.Orders.AsNoTracking().FirstAsync(o => o.Id == orderDto.Id);
+        dbOrder.DeliveryAddress.Should().Be("12 Main St, Apt 3");
+        dbOrder.DeliveryZipCode.Should().Be("12345");
+    }
+
+    [Theory]
+    [InlineData(null, "12345")]
+    [InlineData("12 Main St", null)]
+    [InlineData("   ", "12345")]
+    public async Task PlaceOrder_DeliveryWithoutAddress_ReturnsBadRequest(string? address, string? zipCode)
+    {
+        // Arrange
+        var (_, _, profile, dish) = await CreateOrderScenario();
+        var client = await CreateAuthenticatedClient("eater@test.com", "EaterPass123!@#", "Eater");
+
+        // Act
+        var response = await client.PostAsJsonAsync("/api/orders", DeliveryOrder(profile.Id, dish.Id, address, zipCode));
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await DbContext.Orders.AnyAsync()).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task PlaceOrder_DeliveryOutsideServiceArea_ReturnsBadRequest()
+    {
+        // Arrange
+        var (_, _, profile, dish) = await CreateOrderScenario();
+        var client = await CreateAuthenticatedClient("eater@test.com", "EaterPass123!@#", "Eater");
+
+        // Act
+        var response = await client.PostAsJsonAsync("/api/orders", DeliveryOrder(profile.Id, dish.Id, "12 Main St", "99999"));
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.Content.ReadAsStringAsync()).Should().Contain("doesn't deliver to 99999");
+    }
+
+    [Fact]
+    public async Task PlaceOrder_DeliveryZipCodeNotFiveDigits_ReturnsBadRequest()
+    {
+        // Arrange
+        var (_, _, profile, dish) = await CreateOrderScenario();
+        var client = await CreateAuthenticatedClient("eater@test.com", "EaterPass123!@#", "Eater");
+
+        // Act
+        var response = await client.PostAsJsonAsync("/api/orders", DeliveryOrder(profile.Id, dish.Id, "12 Main St", "123ab"));
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task PlaceOrder_Pickup_IgnoresDeliveryAddress()
+    {
+        // Arrange
+        var (_, _, profile, dish) = await CreateOrderScenario();
+        var client = await CreateAuthenticatedClient("eater@test.com", "EaterPass123!@#", "Eater");
+        var dto = DeliveryOrder(profile.Id, dish.Id, "12 Main St", "12345");
+        dto.FulfillmentType = FulfillmentType.Pickup;
+
+        // Act
+        var response = await client.PostAsJsonAsync("/api/orders", dto);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var orderDto = await response.Content.ReadFromJsonAsync<OrderDto>();
+        orderDto!.DeliveryAddress.Should().BeNull();
+        orderDto.DeliveryZipCode.Should().BeNull();
+    }
+
     [Fact]
     public async Task PlaceOrder_ValidOrder_CreatesOrderInDatabase()
     {
@@ -792,7 +890,7 @@ public class OrdersControllerTests : BaseIntegrationTest
         var createDto = new CreateOrderDto
         {
             CookProfileId = profile.Id,
-            FulfillmentType = FulfillmentType.Delivery,
+            FulfillmentType = FulfillmentType.Pickup,
             PaymentMethod = PaymentMethod.Cash,
             Items =
             [

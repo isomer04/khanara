@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.RateLimiting;
 using Khanara.API.Data;
 using Khanara.API.Entities;
@@ -9,6 +10,7 @@ using Khanara.API.Services;
 using Khanara.API.SignalR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.AspNetCore.Rewrite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -87,6 +89,21 @@ if (builder.Configuration.GetValue("Jobs:RunInProcess", true))
 }
 
 builder.Services.AddHealthChecks();
+
+// Cloud Run doesn't compress responses, so the SPA bundles would go out raw.
+// JSON is left out on purpose: API responses carry tokens next to user input,
+// the combination BREACH-style attacks need.
+builder.Services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true;
+    options.Providers.Add<BrotliCompressionProvider>();
+    options.Providers.Add<GzipCompressionProvider>();
+    options.MimeTypes =
+    [
+        "text/html", "text/css", "text/javascript", "application/javascript",
+        "image/svg+xml", "text/plain", "application/manifest+json",
+    ];
+});
 
 builder.Services.AddRateLimiter(options =>
 {
@@ -222,6 +239,7 @@ builder.Services.AddSwaggerGen(options =>
 var app = builder.Build();
 
 app.UseMiddleware<ExceptionMiddleware>();
+app.UseResponseCompression();
 
 // www.khanara.shop → khanara.shop, so the host-only refresh cookie isn't split across two hosts
 app.UseRewriter(new RewriteOptions().AddRedirectToNonWwwPermanent());
@@ -299,7 +317,19 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.UseDefaultFiles();
-app.UseStaticFiles();
+app.UseStaticFiles(new StaticFileOptions
+{
+    OnPrepareResponse = ctx =>
+    {
+        // Angular's content-hashed bundles (main-ABCD1234.js) never change, so
+        // cache them for good. index.html must be revalidated so a deploy is
+        // picked up; without an explicit header Cloud Run sends "private".
+        var fileName = ctx.File.Name;
+        ctx.Context.Response.Headers.CacheControl = HashedAssetName().IsMatch(fileName)
+            ? "public, max-age=31536000, immutable"
+            : fileName == "index.html" ? "no-cache" : "public, max-age=3600";
+    }
+});
 
 app.MapControllers();
 app.MapHub<OrderHub>("hubs/order", options =>
@@ -308,6 +338,9 @@ app.MapHub<OrderHub>("hubs/order", options =>
 });
 // Not /healthz: Cloud Run reserves URL paths ending in "z" and never forwards them.
 app.MapHealthChecks("/health");
+// Unknown API routes (or a failed route constraint like /api/cooks/abc) are 404s;
+// without this they'd fall through to the SPA and return index.html with a 200.
+app.MapFallback("/api/{**path}", () => Results.NotFound());
 app.MapFallbackToController("Index", "Fallback");
 
 // Skip database initialization in Test environment (handled by test infrastructure)
@@ -320,7 +353,7 @@ if (!app.Environment.IsEnvironment("Test"))
         var context = services.GetRequiredService<AppDbContext>();
         var userManager = services.GetRequiredService<UserManager<AppUser>>();
         await context.Database.MigrateAsync();
-        await Seed.SeedUsers(userManager, context);
+        await Seed.SeedUsers(userManager, context, app.Environment.IsDevelopment());
     }
     catch (Exception ex)
     {
@@ -336,4 +369,8 @@ if (!app.Environment.IsEnvironment("Test"))
 app.Run();
 
 // Make the implicit Program class public for testing
-public partial class Program { }
+public partial class Program
+{
+    [GeneratedRegex(@"-[A-Z0-9]{8}\.(js|css)$")]
+    private static partial Regex HashedAssetName();
+}

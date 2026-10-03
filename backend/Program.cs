@@ -316,8 +316,9 @@ app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.UseDefaultFiles();
-app.UseStaticFiles(new StaticFileOptions
+// Shared by the static files middleware and the SPA fallback below, so
+// index.html gets the same headers whichever of them serves it.
+var spaFileOptions = new StaticFileOptions
 {
     OnPrepareResponse = ctx =>
     {
@@ -329,7 +330,10 @@ app.UseStaticFiles(new StaticFileOptions
             ? "public, max-age=31536000, immutable"
             : fileName == "index.html" ? "no-cache" : "public, max-age=3600";
     }
-});
+};
+
+app.UseDefaultFiles();
+app.UseStaticFiles(spaFileOptions);
 
 app.MapControllers();
 app.MapHub<OrderHub>("hubs/order", options =>
@@ -341,7 +345,7 @@ app.MapHealthChecks("/health");
 // Unknown API routes (or a failed route constraint like /api/cooks/abc) are 404s;
 // without this they'd fall through to the SPA and return index.html with a 200.
 app.MapFallback("/api/{**path}", () => Results.NotFound());
-app.MapFallbackToController("Index", "Fallback");
+app.MapFallbackToFile("index.html", spaFileOptions);
 
 // Skip database initialization in Test environment (handled by test infrastructure)
 if (!app.Environment.IsEnvironment("Test"))

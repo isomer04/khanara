@@ -28,7 +28,7 @@ public class CreateOrderDto
     [MaxLength(300)]
     public string? DeliveryAddress { get; set; }
 
-    [RegularExpression(@"^\d{5}$", ErrorMessage = "Delivery zip code must be 5 digits.")]
+    [RegularExpression("^[0-9]{5}$",ErrorMessage = "Delivery zip code must be 5 digits.")]
     public string? DeliveryZipCode { get; set; }
 }
 

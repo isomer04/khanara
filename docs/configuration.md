@@ -15,7 +15,7 @@ copy backend/appsettings.Development.json.example backend/appsettings.Developmen
 
 | Key | Example | Notes |
 |---|---|---|
-| `ConnectionStrings:DefaultConnection` | `Server=localhost,1434;Database=khanara;User Id=sa;Password=…;TrustServerCertificate=True` | SQL Server connection string. The dev database runs in Docker (`docker compose up -d`) on port 1434; the password is whatever you set as `SQL_SA_PASSWORD` |
+| `ConnectionStrings:DefaultConnection` | `Host=localhost;Port=5433;Database=khanara;Username=postgres;Password=…` | PostgreSQL (Npgsql) connection string. The dev database runs in Docker (`docker compose up -d`) on port 5433; the password is whatever you set as `POSTGRES_PASSWORD`. On Cloud Run it comes from Secret Manager and uses the Cloud SQL socket (`Host=/cloudsql/<connection-name>`) |
 
 ### JWT / Auth
 
@@ -60,6 +60,9 @@ Missing Cloudinary config causes a fast-fail on startup outside the Test environ
 |---|---|---|
 | `DailyReset:CutoverHourUtc` | `3` | UTC hour (0–23) when daily dish portions reset |
 | `RateLimiting:AuthPermitLimit` | `10` | Requests per minute per IP on `/api/account/*` |
+| `Jobs:RunInProcess` | `true` | Run the two background jobs on in-process timers. Set to `false` where Cloud Scheduler calls `/api/jobs/*` instead (Cloud Run) |
+| `Jobs:OidcAudience` | — | Audience Cloud Scheduler puts in its OIDC token (e.g. `https://khanara.shop/api/jobs`) |
+| `Jobs:SchedulerServiceAccountEmail` | — | Only tokens for this service account may call `/api/jobs/*`. Unset → the endpoints reject every call |
 
 ---
 
@@ -79,6 +82,6 @@ export const environment = {
 
 ## Security Notes
 
-- Never commit `appsettings.Development.json` or `.env` (holds `SQL_SA_PASSWORD`) — both are gitignored.
-- For production, inject secrets via environment variables, Azure Key Vault, or AWS Secrets Manager.
+- Never commit `appsettings.Development.json` or `.env` (holds `POSTGRES_PASSWORD`) — both are gitignored.
+- In production (Cloud Run) secrets come from Google Secret Manager as environment variables; see [gcp-deployment-plan.md](gcp-deployment-plan.md).
 - SSL certificates (`*.pem`, `*.key`) are gitignored. Generate them locally with `mkcert` or the .NET dev cert tool.

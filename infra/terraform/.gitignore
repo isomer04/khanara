@@ -1,0 +1,24 @@
+# Terraform working directories and state (state lives in GCS; local state from
+# the bootstrap stack must never be committed either).
+**/.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+*.tfplan
+tfplan
+
+# Variable files hold account IDs and third-party secrets. Only the
+# *.example templates are committed.
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
+backend.hcl
+
+# CLI overrides
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc

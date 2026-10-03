@@ -1,22 +1,119 @@
 # Deployment Guide
 
-> The app is deployed to an Azure Web App (`khanara.azurewebsites.net`) with a SQL Server database. Deploys run automatically via GitHub Actions (`.github/workflows/main_khanara.yml`) on every push to `main`.
+> **Target: Google Cloud** — Cloud Run + Cloud SQL for PostgreSQL at `https://khanara.shop`, provisioned with Terraform (`infra/terraform/`). The full plan, cost breakdown and first-time runbook are in [gcp-deployment-plan.md](gcp-deployment-plan.md).
+>
+> The app previously ran on Azure App Service with Azure SQL (see [Previous deployment](#previous-deployment-azure)).
 
 ---
 
-## Live deployment (Azure)
-
-**Live app:** [khanara.azurewebsites.net](https://khanara.azurewebsites.net)
-
-The API and the bundled Angular SPA run on **Azure App Service (Linux, .NET 10)**, backed by **Azure SQL Database**. Every push to `main` deploys automatically through GitHub Actions using **OIDC federated credentials** — no publish-profile passwords or long-lived secrets are stored anywhere.
+## How the production deploy works
 
 | | |
 |---|---|
-| **Hosting** | Azure App Service · Linux · .NET 10 |
-| **Database** | Azure SQL Database |
-| **CI/CD** | GitHub Actions → `azure/webapps-deploy@v3` |
-| **Auth to Azure** | OpenID Connect (federated identity, passwordless) |
-| **TLS** | Managed certificate on `*.azurewebsites.net` |
+| **Hosting** | Cloud Run (one container, scales to zero, max 1 instance) |
+| **Database** | Cloud SQL for PostgreSQL 17 (`db-f1-micro`), reached through Cloud Run's built-in Cloud SQL connector |
+| **Secrets** | Secret Manager, injected as environment variables |
+| **Background jobs** | Cloud Scheduler → `POST /api/jobs/*` with a Google-signed OIDC token |
+| **Domain / TLS** | Cloud DNS + Cloud Run domain mapping with a Google-managed certificate |
+| **Infrastructure** | Terraform (`infra/terraform/bootstrap`, `infra/terraform/prod`), applied by hand |
+| **CI/CD** | GitHub Actions → Artifact Registry → `gcloud run deploy`, keyless via Workload Identity Federation |
+
+1. `.github/workflows/ci.yml` builds and tests every push and PR.
+2. When CI passes on a push to `main`, `.github/workflows/deploy-gcp.yml`:
+   - authenticates to Google Cloud with Workload Identity Federation (no stored keys),
+   - builds the root `Dockerfile` (Angular build → `dotnet publish` → ASP.NET runtime image) and pushes it to Artifact Registry,
+   - rolls out a new Cloud Run revision with that image and checks `/health`.
+3. Terraform owns every other setting of the service (env vars, secrets, scaling). It ignores the image, so CI deploys never cause drift.
+
+---
+
+## Build locally
+
+```bash
+docker build -t khanara:local .
+```
+
+The image serves the API and the Angular SPA on port 8080. Without Docker:
+
+```bash
+cd client && npm ci && npm run build        # output lands in backend/wwwroot/
+cd ../backend && dotnet publish -c Release -o ./publish
+```
+
+---
+
+## Database
+
+The app uses PostgreSQL via EF Core (`UseNpgsql(...)` in `Program.cs`). Locally it runs in Docker (`docker compose up -d`, port 5433); in production it's Cloud SQL. Integration tests use in-memory SQLite and don't touch a real server.
+
+Migrations run at startup (`MigrateAsync()` in `Program.cs`). That is safe on Cloud Run because the service is capped at one instance. If you ever raise `max_instance_count`, move migrations into the deploy pipeline first:
+
+```bash
+dotnet ef database update --project backend/Khanara.API.csproj --connection "<connection string>"
+```
+
+---
+
+## Environment Variables
+
+Set by Terraform in `infra/terraform/prod/cloudrun.tf`; secrets come from Secret Manager.
+
+```
+ConnectionStrings__DefaultConnection   (secret: khanara-db-connection-string, generated)
+TokenKey                               (secret: khanara-jwt-token-key, generated)
+CloudinarySettings__ApiKey             (secret: khanara-cloudinary-api-key)
+CloudinarySettings__ApiSecret          (secret: khanara-cloudinary-api-secret)
+Stripe__SecretKey                      (secret: khanara-stripe-secret-key)
+Stripe__WebhookSecret                  (secret: khanara-stripe-webhook-secret)
+CloudinarySettings__CloudName
+Jwt__Issuer / Jwt__Audience            https://khanara.shop
+Cors__AllowedOrigins__0 / __1          https://khanara.shop, https://www.khanara.shop
+Stripe__SuccessUrl / Stripe__CancelUrl https://khanara.shop/... (the run.app URL until enable_domain_mapping is on)
+Jobs__RunInProcess                     false
+Jobs__OidcAudience                     https://khanara.shop/api/jobs
+Jobs__SchedulerServiceAccountEmail     khanara-scheduler@<project>.iam.gserviceaccount.com
+ASPNETCORE_FORWARDEDHEADERS_ENABLED    true
+AllowedHosts                           *
+```
+
+---
+
+## Stripe Webhooks
+
+1. In the Stripe dashboard, create a webhook endpoint for `https://khanara.shop/api/payments/webhook`
+2. Subscribe to `checkout.session.completed` and `charge.refunded`
+3. Store the signing secret: `gcloud secrets versions add khanara-stripe-webhook-secret --data-file=-`
+
+---
+
+## Security Checklist
+
+- [x] `TokenKey` is generated (96 chars) by Terraform and never stored in state
+- [x] HTTPS enforced by Cloud Run; forwarded headers enabled so HSTS and the per-IP rate limiter see the real client
+- [x] `Cors:AllowedOrigins` locked to `khanara.shop` and `www.khanara.shop`
+- [x] Stripe webhook signature verification enabled (handled by `PaymentsController`)
+- [x] Cloud SQL has no authorized networks; only the Cloud SQL connector (IAM) can reach it
+- [x] `/api/jobs/*` accepts only OIDC tokens issued to the scheduler service account
+- [ ] The 10 seeded catalog cook accounts (`Data/Seed.cs`) share a password committed to this repo. Change them on the live database or gate the seeding
+- [ ] Image upload size limit (5 MB) reviewed for production load
+
+---
+
+## Background Jobs
+
+| Job | Schedule | Purpose |
+|---|---|---|
+| `AbandonedOrderCleanupJob` | Every 15 min | Cancels Pending Stripe orders >45 min old, restores portions |
+| `DailyPortionsResetJob` | Daily at `DailyReset:CutoverHourUtc` (default 03:00 UTC) | Resets dish portions, minus portions held by active orders. Runs at most once per UTC day (`JobRuns` table) |
+
+- **Default (`Jobs:RunInProcess=true`)**: two `BackgroundService` timers run the jobs. Use this for local development and any always-on host.
+- **Cloud Run (`Jobs:RunInProcess=false`)**: the instance scales to zero, so Cloud Scheduler calls `POST /api/jobs/abandoned-order-cleanup` and `POST /api/jobs/daily-portions-reset` (`JobsController`). Both jobs are safe to retry.
+
+---
+
+## Previous deployment (Azure)
+
+Until June 2026 the API and SPA ran on **Azure App Service (Linux, .NET 10)** with **Azure SQL Database**, deployed by `.github/workflows/main_khanara.yml` (now disabled) using OIDC federated credentials. It went offline when the Azure free tier expired.
 
 ### Azure App Service — Overview
 
@@ -31,110 +128,3 @@ The API and the bundled Angular SPA run on **Azure App Service (Linux, .NET 10)*
 ![GitHub Actions run showing the build and deploy jobs passing](screenshots/image-3.png)
 
 > Screenshots live in [`docs/screenshots/`](screenshots/) — see the README there for exactly what to capture and a quick privacy note before committing.
-
----
-
-## How the production deploy works
-
-The `main_khanara.yml` workflow:
-
-1. Builds the Angular client (`npm ci && npm run build`) — the output goes directly into `backend/wwwroot/` (configured in `client/angular.json`)
-2. Builds and publishes the .NET API (`dotnet publish`), which bundles `wwwroot/` — so the API serves the SPA itself (`FallbackController` routes non-API requests to `index.html`)
-3. Logs in to Azure via OIDC (the `AZUREAPPSERVICE_*` secrets) and deploys the published output to the `khanara` Web App
-
-There is a separate workflow, `.github/workflows/ci.yml`, that runs build/test/lint/security checks on PRs — it never deploys.
-
----
-
-## Prerequisites (manual deploy)
-
-- .NET 10 SDK
-- Node.js 24 LTS (for building the frontend; Angular 21 supports ^20.19.0 || ^22.12.0 || ^24.0.0)
-- A SQL Server instance (Docker locally, Azure SQL in production)
-- Cloudinary account (required)
-- Stripe account with live keys configured
-
----
-
-## Build
-
-**Frontend first** (its output lands in `backend/wwwroot/`):
-```bash
-cd client
-npm ci
-npm run build
-```
-
-**Then backend:**
-```bash
-cd backend
-dotnet publish -c Release -o ./publish
-```
-
----
-
-## Database
-
-The app uses SQL Server via EF Core (`opt.UseSqlServer(...)` in `Program.cs`). Locally the database runs in Docker (`docker compose up -d`); in production it's an Azure-hosted SQL Server. Integration tests use in-memory SQLite and don't touch a real server.
-
-Run migrations as part of your CI/CD pipeline — **not** on startup — to avoid race conditions when scaling horizontally:
-
-```bash
-dotnet ef database update --project backend/Khanara.API.csproj
-```
-
-If you keep `MigrateAsync()` in `Program.cs`, ensure only one instance runs at a time during deploy.
-
----
-
-## Environment Variables
-
-Set the following in your hosting environment (never commit these):
-
-```
-ConnectionStrings__DefaultConnection=...
-TokenKey=<64+ char random string>
-Jwt__Issuer=https://your-api-domain.com
-Jwt__Audience=https://your-frontend-domain.com
-CloudinarySettings__CloudName=...
-CloudinarySettings__ApiKey=...
-CloudinarySettings__ApiSecret=...
-Stripe__SecretKey=sk_live_...
-Stripe__WebhookSecret=whsec_...
-Cors__AllowedOrigins__0=https://your-frontend-domain.com
-```
-
----
-
-## Stripe Webhooks
-
-When re-enabling the card payment UI:
-
-1. Create a webhook endpoint in the Stripe dashboard pointing to `https://your-api/api/payments/webhook`
-2. Subscribe to `checkout.session.completed` and `charge.refunded`
-3. Copy the signing secret into `Stripe:WebhookSecret`
-
----
-
-## Security Checklist
-
-- [ ] `TokenKey` is at least 64 characters and generated securely
-- [ ] HTTPS enforced (reverse proxy or hosting platform)
-- [ ] `Cors:AllowedOrigins` locked to production frontend URL only
-- [ ] Stripe webhook signature verification enabled (handled by `PaymentsController`)
-- [ ] Image upload size limit (5 MB) reviewed for production load
-- [ ] `DailyReset:CutoverHourUtc` set to an appropriate off-peak hour for your market
-- [ ] Horizontal scaling: migrations moved out of startup
-
----
-
-## Background Services
-
-Two hosted services run in the background — ensure your deployment keeps a single always-on instance:
-
-| Service | Schedule | Purpose |
-|---|---|---|
-| `AbandonedOrderCleanupService` | Every 15 min | Cancels Pending Stripe orders >45 min old, restores portions |
-| `DailyPortionsResetService` | Every 30 min | Resets dish portions once per day at `DailyReset:CutoverHourUtc` |
-
-These are in-process `IHostedService` implementations. If you move to a job queue (Hangfire, Azure Functions, etc.), remove them from `Program.cs`.

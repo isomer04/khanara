@@ -66,12 +66,14 @@ public class Seed
     public static async Task SeedCountryFoodCatalog(UserManager<AppUser> userManager, AppDbContext context)
     {
         // Check if seed data already exists (idempotency)
-        var targetCuisines = new[] {
+        // A List (not an array) so Npgsql can bind it against the List<CuisineTag>
+        // CookProfile.CuisineTags column in the queries below.
+        List<CuisineTag> targetCuisines = [
             CuisineTag.Bengali, CuisineTag.Indian, CuisineTag.Pakistani,
             CuisineTag.Thai, CuisineTag.Chinese, CuisineTag.Lebanese,
             CuisineTag.Turkish, CuisineTag.Vietnamese, CuisineTag.Korean,
             CuisineTag.Filipino
-        };
+        ];
 
         // Check if seed data with photos already exists (idempotency)
         // We check for dishes with photos to allow re-running to add photos to existing dishes

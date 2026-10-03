@@ -1,6 +1,6 @@
 # Khanara
 
-**🌐 Live site: [https://khanara.azurewebsites.net](https://khanara.azurewebsites.net/)** — ~~deployed on Azure App Service with Azure SQL Database.~~ **Currently down** — Azure free tier expired; redeployment pending. See the [demo gif](assets/khanara.gif) below.
+**🌐 Live site: [khanara-940992710588.us-central1.run.app](https://khanara-940992710588.us-central1.run.app)**: running on Google Cloud Run + Cloud SQL, provisioned with Terraform ([plan](docs/gcp-deployment-plan.md)). The custom domain [khanara.shop](https://khanara.shop) is being connected. Previously deployed on Azure App Service + Azure SQL ([screenshots](#previously-azure-app-service)). See the [demo gif](assets/khanara.gif) below.
 
 A home-cooked food marketplace connecting home cooks with food enthusiasts, specializing in Asian and Arabian cuisines.
 
@@ -10,13 +10,15 @@ A home-cooked food marketplace connecting home cooks with food enthusiasts, spec
 [![Angular](https://img.shields.io/badge/Angular-21-DD0031?logo=angular&logoColor=white)](https://angular.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
-[![SQL Server](https://img.shields.io/badge/SQL_Server-EF_Core_10-CC2927?logo=microsoftsqlserver&logoColor=white)](https://www.microsoft.com/sql-server)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-EF_Core_10-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Google Cloud](https://img.shields.io/badge/Google_Cloud-Cloud_Run-4285F4?logo=googlecloud&logoColor=white)](docs/gcp-deployment-plan.md)
+[![Terraform](https://img.shields.io/badge/Terraform-IaC-844FBA?logo=terraform&logoColor=white)](infra/terraform)
 [![Stripe](https://img.shields.io/badge/Stripe-51-635BFF?logo=stripe&logoColor=white)](https://stripe.com/)
 [![Cloudinary](https://img.shields.io/badge/Cloudinary-images-3448C5?logo=cloudinary&logoColor=white)](https://cloudinary.com/)
 
 ### Demo
 
-While the live site is down, here's a walkthrough of the app:
+Here's a walkthrough of the app:
 
 ![Khanara demo](assets/khanara.gif)
 
@@ -48,27 +50,27 @@ Khanara lets home cooks list their dishes, set daily portions, and receive order
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)
 - [Node.js 24 (LTS)](https://nodejs.org/)
-- [Docker](https://www.docker.com/) (runs the SQL Server database)
+- [Docker](https://www.docker.com/) (runs the PostgreSQL database)
 - [Cloudinary account](https://cloudinary.com/) (required for photo uploads)
 
 ### Database
 
-SQL Server runs in Docker. Set a strong SA password and start the container:
+PostgreSQL runs in Docker. Set a password and start the container:
 
 ```bash
-# Create a .env file in the repo root (or set the variable in your shell)
-echo SQL_SA_PASSWORD=YourStrong!Passw0rd > .env
+# Create a .env file in the repo root (docker-compose.yml reads it; it is gitignored)
+echo POSTGRES_PASSWORD=YourStrong!Passw0rd > .env
 docker compose up -d
 ```
 
-SQL Server listens on `localhost:1434`.
+PostgreSQL listens on `localhost:5433`.
 
 ### Backend
 
 ```bash
 cd backend
 copy appsettings.Development.json.example appsettings.Development.json
-# Fill in the SQL password, TokenKey (64+ chars), Cloudinary, Stripe, and CORS values
+# Fill in the Postgres password, TokenKey (64+ chars), Cloudinary, Stripe, and CORS values
 dotnet ef database update
 dotnet run
 ```
@@ -99,13 +101,13 @@ cd backend/Khanara.API.Tests && dotnet test
 
 ## Deployment
 
-**🌐 Live: [khanara.azurewebsites.net](https://khanara.azurewebsites.net)** — ~~running on **Azure App Service** (Linux, .NET 10) with **Azure SQL Database**~~. Currently offline (Azure free tier expired). Pipeline and config in [docs/deployment.md](docs/deployment.md) are ready for redeploy on any new host.
+**Live on Google Cloud at [khanara-940992710588.us-central1.run.app](https://khanara-940992710588.us-central1.run.app)** (custom domain [khanara.shop](https://khanara.shop) coming soon). One Cloud Run container (API + SPA) that scales to zero, Cloud SQL for PostgreSQL, Secret Manager, Cloud Scheduler for the background jobs, and Cloud DNS. All of it is defined in Terraform under [`infra/terraform/`](infra/terraform). It costs about $10–15/month, so the $300 free-trial credit covers the whole trial. See the [GCP deployment plan](docs/gcp-deployment-plan.md) for the architecture, costs and runbook.
 
-The app **has been deployed before** on Azure App Service. See the [@docs/screenshots/](docs/screenshots/) folder for proof of past deployments — Azure overview (healthy web app on Linux/.NET 10), Deployment Center activity log, and GitHub Actions CI/CD runs.
+When CI passes on `main`, [`deploy-gcp.yml`](.github/workflows/deploy-gcp.yml) builds the Docker image, pushes it to Artifact Registry and rolls out a new revision. It authenticates through **Workload Identity Federation**, so no service-account keys are stored. See [docs/deployment.md](docs/deployment.md) for environment variables, Stripe webhooks and the security checklist.
 
-Every push to `main` builds and deploys automatically via **GitHub Actions** using **OIDC federated credentials** — passwordless, with no publish-profile secrets stored. See [docs/deployment.md](docs/deployment.md) for the full pipeline, environment variables, and security checklist.
+### Previously: Azure App Service
 
-### Past deployments (screenshots)
+Before moving to Google Cloud, the app ran at `khanara.azurewebsites.net` on **Azure App Service** (Linux, .NET 10) with **Azure SQL Database**. Every push to `main` built and deployed through GitHub Actions using **OIDC federated credentials**, so no publish-profile secrets were stored. It went offline when the Azure free tier expired. The screenshots below (also in [docs/screenshots/](docs/screenshots/)) show that deployment: the Azure overview (healthy web app on Linux/.NET 10), the Deployment Center activity log and the GitHub Actions CI/CD runs.
 
 | | |
 |---|---|
@@ -123,6 +125,7 @@ Every push to `main` builds and deploys automatically via **GitHub Actions** usi
 | [docs/configuration.md](docs/configuration.md) | All config keys, environment variables, and secrets |
 | [docs/api-reference.md](docs/api-reference.md) | Endpoint reference, auth, roles, pagination, error shapes |
 | [docs/architecture.md](docs/architecture.md) | System diagram, layer structure, auth flow, domain entities |
+| [docs/gcp-deployment-plan.md](docs/gcp-deployment-plan.md) | Google Cloud architecture, costs, Terraform layout, first-time runbook |
 | [docs/deployment.md](docs/deployment.md) | Production build, database migration, Stripe webhooks, security checklist |
 | [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) | Branching, commit style, PR guidelines, code standards |
 
@@ -137,6 +140,8 @@ khanara/
 │   └── Khanara.API.Tests/# xUnit tests (unit, integration, concurrency)
 ├── client/               # Angular SPA (features, core, shared, types)
 ├── docs/                 # Guides: config, API, architecture, deployment, contributing
+├── infra/terraform/      # GCP infrastructure (bootstrap + prod stacks)
+├── Dockerfile            # Angular build → .NET publish → runtime image
 ├── LICENSE
 └── README.md
 ```

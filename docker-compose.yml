@@ -1,12 +1,18 @@
 services:
-  sql:
-    # Pinned tag for reproducible builds; check
-    # https://mcr.microsoft.com/v2/mssql/server/tags/list for newer CUs.
-    image: mcr.microsoft.com/mssql/server:2025-CU5-ubuntu-24.04
-    container_name: sql
+  db:
+    # Same major version as Cloud SQL (infra/terraform/prod, var.db_version).
+    image: postgres:17
+    container_name: khanara-db
     environment:
-      - ACCEPT_EULA=Y
-      - MSSQL_SA_PASSWORD=${SQL_SA_PASSWORD:?Set SQL_SA_PASSWORD in your environment or a local .env file}
-    platform: "linux/amd64"
+      - POSTGRES_DB=khanara
+      - POSTGRES_USER=postgres
+    # POSTGRES_PASSWORD comes from the gitignored .env file in the repo root.
+    env_file:
+      - .env
     ports:
-      - "1434:1433"
+      - "5433:5432"
+    volumes:
+      - khanara-pgdata:/var/lib/postgresql/data
+
+volumes:
+  khanara-pgdata:

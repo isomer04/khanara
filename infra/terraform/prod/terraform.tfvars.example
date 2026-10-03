@@ -1,0 +1,24 @@
+# Copy to terraform.tfvars (gitignored) and fill in. No secrets go here:
+# DB password and JWT key are generated, third-party keys go in with gcloud.
+project_id            = "khanara-prod-123456"
+billing_account       = "012345-6789AB-CDEF01"
+cloudinary_cloud_name = "your-cloud-name"
+
+# Records you already have at the registrar that must survive the move to
+# Cloud DNS (check with: nslookup -type=TXT khanara.shop).
+apex_txt_records = [
+  "google-site-verification=REPLACE_WITH_EXISTING_VALUE",
+]
+# mx_records = ["1 smtp.google.com."]
+
+# Turn on once `gcloud domains list-user-verified` shows the domain for the
+# account running Terraform:
+# enable_domain_mapping = true
+
+# Optional overrides
+# region               = "us-central1"
+# domain               = "khanara.shop"
+# github_repository    = "isomer04/khanara"
+# daily_reset_hour_utc = 3
+# monthly_budget_usd   = 25
+# budget_currency_code = "USD" # must match the billing account currency

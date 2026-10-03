@@ -6,7 +6,7 @@
     }
   },
   "ConnectionStrings": {
-    "DefaultConnection": "Server=localhost,1434;Database=khanara;User Id=sa;Password=REPLACE_WITH_YOUR_SQL_SA_PASSWORD;TrustServerCertificate=True"
+    "DefaultConnection": "Host=localhost;Port=5433;Database=khanara;Username=postgres;Password=REPLACE_WITH_YOUR_POSTGRES_PASSWORD"
   },
   "TokenKey": "REPLACE_WITH_A_RANDOM_STRING_AT_LEAST_64_CHARS_LONG",
   "Jwt": {
@@ -23,5 +23,8 @@
     "WebhookSecret": "whsec_REPLACE_WITH_STRIPE_CLI_WEBHOOK_SECRET",
     "SuccessUrl": "https://localhost:5444/payment/success?orderId={0}",
     "CancelUrl": "https://localhost:5444/orders/{0}"
+  },
+  "Cors": {
+    "AllowedOrigins": [ "https://localhost:5444" ]
   }
 }

@@ -1,8 +1,18 @@
-# Copy to terraform.tfvars (gitignored) and fill in. No secrets go here:
-# DB password and JWT key are generated, third-party keys go in with gcloud.
+# Copy to terraform.tfvars (gitignored) and fill in. The DB password and JWT
+# key are generated; only the third-party keys below are secret.
 project_id            = "khanara-prod-123456"
 billing_account       = "012345-6789AB-CDEF01"
 cloudinary_cloud_name = "your-cloud-name"
+
+# Ephemeral: sent straight to Secret Manager, never stored in Terraform state.
+# After changing any of them, bump third_party_secrets_version so they're published.
+third_party_secrets = {
+  "cloudinary-api-key"    = ""
+  "cloudinary-api-secret" = ""
+  "stripe-secret-key"     = ""
+  "stripe-webhook-secret" = "" # whsec_... of the endpoint in `terraform output stripe_webhook_url`
+}
+# third_party_secrets_version = 2
 
 # Records you already have at the registrar that must survive the move to
 # Cloud DNS (check with: nslookup -type=TXT khanara.shop).

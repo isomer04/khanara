@@ -6,10 +6,23 @@ namespace Khanara.API.Data;
 
 public class Seed
 {
-    public static async Task SeedUsers(UserManager<AppUser> userManager, AppDbContext context)
+    private const string SeedCookEmailDomain = "@khanara.seed";
+
+    // The seed passwords below are committed to a public repo, so they're only
+    // ever set in Development. Elsewhere the catalog's cook accounts have no
+    // password at all: they exist to own the demo kitchens, not to sign in.
+    private const string DevSeedCookPassword = "K@h4n@r@Seed2025!";
+
+    public static async Task SeedUsers(UserManager<AppUser> userManager, AppDbContext context, bool isDevelopment)
     {
         // Always seed the country food catalog (it's idempotent)
-        await SeedCountryFoodCatalog(userManager, context);
+        await SeedCountryFoodCatalog(userManager, context, isDevelopment);
+
+        if (!isDevelopment)
+        {
+            await RemoveSeedCookPasswords(userManager);
+            return;
+        }
 
         // Only seed test users if no users exist
         if (await userManager.Users.AnyAsync()) return;
@@ -63,7 +76,29 @@ public class Seed
         await userManager.AddToRolesAsync(admin, ["Admin"]);
     }
 
-    public static async Task SeedCountryFoodCatalog(UserManager<AppUser> userManager, AppDbContext context)
+    // Databases seeded before the seed cooks went passwordless still accept the
+    // committed password. Strip it (and any live session) on every startup.
+    public static async Task RemoveSeedCookPasswords(UserManager<AppUser> userManager)
+    {
+        var seedCooks = await userManager.Users
+            .Where(u => u.Email!.EndsWith(SeedCookEmailDomain) && u.PasswordHash != null)
+            .ToListAsync();
+
+        foreach (var user in seedCooks)
+        {
+            user.RefreshToken = null;
+            user.RefreshTokenExpiry = null;
+            var result = await userManager.RemovePasswordAsync(user);
+            // Another instance starting at the same time got there first
+            if (result.Errors.Any(e => e.Code == nameof(IdentityErrorDescriber.ConcurrencyFailure))) continue;
+            if (!result.Succeeded)
+                throw new InvalidOperationException(
+                    $"Failed to remove the seed password for {user.Email}: " +
+                    string.Join(", ", result.Errors.Select(e => e.Description)));
+        }
+    }
+
+    public static async Task SeedCountryFoodCatalog(UserManager<AppUser> userManager, AppDbContext context, bool isDevelopment)
     {
         // Check if seed data already exists (idempotency)
         // A List (not an array) so Npgsql can bind it against the List<CuisineTag>
@@ -121,7 +156,7 @@ public class Seed
         }
 
         // Create cook profiles for each cuisine
-        var cookProfiles = await CreateCookProfiles(userManager, context);
+        var cookProfiles = await CreateCookProfiles(userManager, context, isDevelopment);
 
         // Create dishes for each cuisine
         await CreateDishes(context, cookProfiles);
@@ -129,7 +164,8 @@ public class Seed
 
     private static async Task<Dictionary<CuisineTag, CookProfile>> CreateCookProfiles(
         UserManager<AppUser> userManager,
-        AppDbContext context)
+        AppDbContext context,
+        bool isDevelopment)
     {
         var cookProfiles = new Dictionary<CuisineTag, CookProfile>();
 
@@ -149,7 +185,7 @@ public class Seed
 
         foreach (var (cuisine, (kitchenName, bio, zipCodes)) in cuisineData)
         {
-            var email = $"{cuisine.ToString().ToLower()}cook@khanara.seed";
+            var email = $"{cuisine.ToString().ToLower()}cook{SeedCookEmailDomain}";
 
             // Check if user already exists
             var existingUser = await userManager.FindByEmailAsync(email);
@@ -177,7 +213,13 @@ public class Seed
                     Email = email,
                     DisplayName = kitchenName
                 };
-                await userManager.CreateAsync(cookUser, "K@h4n@r@Seed2025!");
+                var created = isDevelopment
+                    ? await userManager.CreateAsync(cookUser, DevSeedCookPassword)
+                    : await userManager.CreateAsync(cookUser);
+                if (!created.Succeeded)
+                    throw new InvalidOperationException(
+                        $"Failed to create seed cook {email}: " +
+                        string.Join(", ", created.Errors.Select(e => e.Description)));
                 await userManager.AddToRoleAsync(cookUser, "Cook");
             }
 

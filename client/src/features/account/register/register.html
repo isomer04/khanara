@@ -47,7 +47,7 @@
 
         <form [formGroup]="credentialsForm" (ngSubmit)="nextStep()" class="flex flex-col gap-4">
           <div class="glass-field-group">
-            <app-text-input label="Email address" formControlName="email" />
+            <app-text-input label="Email address" formControlName="email" type="email" />
             <app-text-input label="Display name" formControlName="displayName" />
             <app-text-input label="Password" formControlName="password" type="password" />
             <app-text-input label="Confirm password" formControlName="confirmPassword" type="password" />
@@ -59,7 +59,6 @@
 
           <button
             type="submit"
-            [disabled]="credentialsForm.invalid && credentialsForm.dirty"
             class="auth-btn mt-1">
             <span>Continue</span>
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="size-4">
@@ -122,8 +121,11 @@
             </button>
             <button
               type="submit"
-              [disabled]="profileForm.invalid && profileForm.dirty"
+              [disabled]="submitting()"
               class="auth-btn flex-[2]">
+              @if (submitting()) {
+                <span class="loading loading-spinner loading-sm"></span>
+              }
               Create account
             </button>
           </div>

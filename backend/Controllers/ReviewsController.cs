@@ -55,8 +55,10 @@ public class ReviewsController(IUnitOfWork uow) : BaseApiController
         if (order.EaterUserId != callerId && order.CookProfile?.AppUserId != callerId)
             return Forbid();
 
+        // No review yet is a normal state, not a missing resource: a 404 here
+        // would send the client's error interceptor to /not-found.
         var review = await uow.ReviewRepository.GetReviewByOrderIdAsync(orderId);
-        if (review == null) return NotFound();
+        if (review == null) return NoContent();
 
         return Ok(MapToDto(review));
     }

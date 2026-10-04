@@ -5,6 +5,7 @@ import { DiscoveryService } from '../../core/services/discovery-service';
 import { AccountService } from '../../core/services/account-service';
 import { DiscoveryCookDto } from '../../types/favorite';
 import { CookCard } from '../../shared/cook-card/cook-card';
+import { CuisineTag, CuisineTagLabels } from '../../types/cook-profile';
 
 @Component({
   selector: 'app-home',
@@ -19,6 +20,20 @@ export class Home implements OnInit {
   protected registerMode = signal(false);
   protected popularCooks = signal<DiscoveryCookDto[]>([]);
   protected newCooks = signal<DiscoveryCookDto[]>([]);
+
+  protected readonly CuisineTagLabels = CuisineTagLabels;
+  protected readonly cuisineChips = [
+    { tag: CuisineTag.Bengali, emoji: '🍛' },
+    { tag: CuisineTag.Indian, emoji: '🌶️' },
+    { tag: CuisineTag.Pakistani, emoji: '🫓' },
+    { tag: CuisineTag.Lebanese, emoji: '🧆' },
+    { tag: CuisineTag.Turkish, emoji: '🥙' },
+    { tag: CuisineTag.Thai, emoji: '🍜' },
+    { tag: CuisineTag.Chinese, emoji: '🥟' },
+    { tag: CuisineTag.Korean, emoji: '🍱' },
+    { tag: CuisineTag.Vietnamese, emoji: '🍲' },
+    { tag: CuisineTag.Filipino, emoji: '🍗' },
+  ];
 
   ngOnInit() {
     this.discoveryService.getNew().subscribe({

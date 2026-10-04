@@ -9,19 +9,27 @@ namespace Khanara.API.Services;
 public class PhotoService : IPhotoService
 {
     private readonly Cloudinary _cloudinary;
+    private readonly ILogger<PhotoService> _logger;
 
-    public PhotoService(IOptions<CloudinarySettings> config)
+    public PhotoService(IOptions<CloudinarySettings> config, ILogger<PhotoService> logger)
     {
         var account = new Account(config.Value.CloudName, config.Value.ApiKey, config.Value.ApiSecret);
 
         _cloudinary = new Cloudinary(account);
+        _logger = logger;
     }
     public async Task<DeletionResult> DeletePhotoAsync(string publicId)
     {
-
         var deleteParams = new DeletionParams(publicId);
 
-        return await _cloudinary.DestroyAsync(deleteParams);
+        var result = await _cloudinary.DestroyAsync(deleteParams);
+        if (result.Error != null)
+        {
+            _logger.LogError("Cloudinary delete of {PublicId} failed: {Message}", publicId, result.Error.Message);
+            return new DeletionResult { Error = new Error { Message = "Photo delete failed. Please try again later." } };
+        }
+
+        return result;
     }
 
     private static readonly string[] AllowedContentTypes = ["image/jpeg", "image/png", "image/webp"];
@@ -48,7 +56,17 @@ public class PhotoService : IPhotoService
             Transformation = new Transformation().Height(500).Width(500).Crop("fill").Gravity("face"),
             Folder = "da-ang20"
         };
-        return await _cloudinary.UploadAsync(uploadParams);
+        var result = await _cloudinary.UploadAsync(uploadParams);
+
+        // Cloudinary's messages describe our account/config (e.g. "Unknown API key"),
+        // not anything the user can fix, so log them and return a generic message.
+        if (result.Error != null)
+        {
+            _logger.LogError("Cloudinary upload failed: {Message}", result.Error.Message);
+            return new ImageUploadResult { Error = new Error { Message = "Photo upload failed. Please try again later." } };
+        }
+
+        return result;
     }
 
     // Reads the first 12 bytes to verify the file is actually the image type it claims to be.

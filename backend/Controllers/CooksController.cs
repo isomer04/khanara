@@ -55,7 +55,7 @@ public class CooksController(IUnitOfWork uow, UserManager<AppUser> userManager) 
             KitchenName = dto.KitchenName,
             Bio = dto.Bio,
             CuisineTags = dto.CuisineTags,
-            ServiceZipCodes = dto.ServiceZipCodes
+            ServiceZipCodes = dto.ServiceZipCodes.Distinct().ToList()
         };
 
         var roleResult = await userManager.AddToRoleAsync(user, "Cook");
@@ -98,7 +98,7 @@ public class CooksController(IUnitOfWork uow, UserManager<AppUser> userManager) 
         if (dto.KitchenName != null) profile.KitchenName = dto.KitchenName;
         if (dto.Bio != null) profile.Bio = dto.Bio;
         if (dto.CuisineTags != null) profile.CuisineTags = dto.CuisineTags;
-        if (dto.ServiceZipCodes != null) profile.ServiceZipCodes = dto.ServiceZipCodes;
+        if (dto.ServiceZipCodes != null) profile.ServiceZipCodes = dto.ServiceZipCodes.Distinct().ToList();
         if (dto.IsAcceptingOrders.HasValue) profile.IsAcceptingOrders = dto.IsAcceptingOrders.Value;
 
         uow.CookRepository.Update(profile);

@@ -9,11 +9,8 @@ locals {
     "stripe-webhook-secret" = "Stripe__WebhookSecret"
   }
 
-  # Third-party credentials: Terraform only creates a placeholder version so
-  # the first deploy can start. Add the real values with
-  #   gcloud secrets versions add khanara-<name> --data-file=-
-  # Cloud Run reads the "latest" version, so they take over on the next start.
-  manual_secrets = toset([
+  # Third-party credentials, supplied through var.third_party_secrets.
+  third_party_secrets = toset([
     "cloudinary-api-key",
     "cloudinary-api-secret",
     "stripe-secret-key",
@@ -51,12 +48,21 @@ resource "google_secret_manager_secret" "app" {
   depends_on = [google_project_service.apis]
 }
 
-resource "google_secret_manager_secret_version" "placeholder" {
-  for_each = local.manual_secrets
+resource "google_secret_manager_secret_version" "third_party" {
+  for_each = local.third_party_secrets
 
   secret                 = google_secret_manager_secret.app[each.key].id
-  secret_data_wo         = "REPLACE_ME"
-  secret_data_wo_version = 1
+  secret_data_wo         = var.third_party_secrets[each.key]
+  secret_data_wo_version = var.third_party_secrets_version
+
+  # Cloud Run pins this version (cloudrun.tf). Leave replaced versions in
+  # Secret Manager so older revisions can still start after a traffic rollback;
+  # destroy them by hand once they're no longer needed.
+  deletion_policy = "ABANDON"
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 ephemeral "random_password" "jwt" {

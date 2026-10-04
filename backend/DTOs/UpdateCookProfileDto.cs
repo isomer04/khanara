@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using Khanara.API.Entities;
+using Khanara.API.Helpers;
 
 namespace Khanara.API.DTOs;
 
@@ -12,6 +13,7 @@ public class UpdateCookProfileDto
     public string? Bio { get; set; }
 
     public List<CuisineTag>? CuisineTags { get; set; }
+    [ZipCodeList]
     public List<string>? ServiceZipCodes { get; set; }
     public bool? IsAcceptingOrders { get; set; }
 }

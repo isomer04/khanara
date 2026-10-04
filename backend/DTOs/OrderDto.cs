@@ -16,6 +16,8 @@ public class OrderDto
     public decimal TotalAmount { get; set; }
     public DateTime? ScheduledFor { get; set; }
     public string? Notes { get; set; }
+    public string? DeliveryAddress { get; set; }
+    public string? DeliveryZipCode { get; set; }
     public string? CancellationReason { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }

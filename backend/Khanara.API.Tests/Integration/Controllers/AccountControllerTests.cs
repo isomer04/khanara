@@ -208,6 +208,9 @@ public class AccountControllerTests : BaseIntegrationTest
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var body = await response.Content.ReadAsStringAsync();
+        body.Should().Contain("An account with this email already exists.");
+        body.Should().NotContain("Username");
     }
 
     [Fact]

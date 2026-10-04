@@ -2,7 +2,7 @@ import { Component, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Subscription } from 'rxjs';
+import { finalize, Subscription } from 'rxjs';
 import { OrderService } from '../../../core/services/order-service';
 import { AccountService } from '../../../core/services/account-service';
 import { ToastService } from '../../../core/services/toast-service';
@@ -78,10 +78,11 @@ export class OrderDetail implements OnInit, OnDestroy {
   ngOnInit() {
     this.orderId = Number(this.route.snapshot.paramMap.get('id'));
     this.loading.set(true);
-    this.orderService.getOrder(this.orderId).subscribe({
+    this.orderService.getOrder(this.orderId).pipe(
+      finalize(() => this.loading.set(false))
+    ).subscribe({
       next: order => this.order.set(order),
       error: () => this.toast.error('Order not found'),
-      complete: () => this.loading.set(false),
     });
 
     this.hub.connect();
@@ -118,13 +119,14 @@ export class OrderDetail implements OnInit, OnDestroy {
     if (next === null || !id) return;
 
     this.actionLoading.set(true);
-    this.orderService.updateStatus(id, { newStatus: next }).subscribe({
+    this.orderService.updateStatus(id, { newStatus: next }).pipe(
+      finalize(() => this.actionLoading.set(false))
+    ).subscribe({
       next: updated => {
         this.order.set(updated);
         this.toast.success(`Status updated to ${OrderStatusLabels[next]}`);
       },
       error: () => this.toast.error('Failed to update status'),
-      complete: () => this.actionLoading.set(false),
     });
   }
 
@@ -134,7 +136,9 @@ export class OrderDetail implements OnInit, OnDestroy {
     if (!reason || !id) return;
 
     this.actionLoading.set(true);
-    this.orderService.cancelOrder(id, { reason }).subscribe({
+    this.orderService.cancelOrder(id, { reason }).pipe(
+      finalize(() => this.actionLoading.set(false))
+    ).subscribe({
       next: updated => {
         this.order.set(updated);
         this.showCancelForm.set(false);
@@ -142,7 +146,6 @@ export class OrderDetail implements OnInit, OnDestroy {
         this.toast.success('Order cancelled');
       },
       error: () => this.toast.error('Failed to cancel order'),
-      complete: () => this.actionLoading.set(false),
     });
   }
 

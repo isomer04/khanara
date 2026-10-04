@@ -630,6 +630,19 @@ describe('Home', () => {
     });
   });
 
+  describe('cuisine chips', () => {
+    it('should link each chip to the cook list filtered by its cuisine', () => {
+      fixture.detectChanges();
+
+      const compiled = fixture.nativeElement as HTMLElement;
+      const chips = Array.from(compiled.querySelectorAll<HTMLAnchorElement>('a[href^="/cooks?cuisine="]'));
+
+      expect(chips).toHaveLength(component['cuisineChips'].length);
+      const korean = chips.find(a => a.textContent?.includes(CuisineTagLabels[CuisineTag.Korean]));
+      expect(korean?.getAttribute('href')).toBe(`/cooks?cuisine=${CuisineTag.Korean}`);
+    });
+  });
+
   describe('why Khanara section', () => {
     it('should display "Why Khanara?" section', async () => {
       fixture.detectChanges();

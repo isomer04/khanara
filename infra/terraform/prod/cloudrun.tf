@@ -26,14 +26,16 @@ locals {
     Jobs__SchedulerServiceAccountEmail = google_service_account.scheduler.email
   }
 
-  # An instance reads its secrets once, at start. The secrets Terraform generates
-  # are pinned so that rotating one rolls out a new revision instead of leaving
-  # the running instance on the old database password. The manual ones stay on
-  # "latest" so `gcloud secrets versions add` needs no apply.
-  pinned_secret_versions = {
-    "db-connection-string" = google_secret_manager_secret_version.db_connection_string.version
-    "jwt-token-key"        = google_secret_manager_secret_version.jwt_token_key.version
-  }
+  # An instance reads its secrets once, at start. Every secret is pinned so that
+  # rotating one rolls out a new revision instead of leaving the running
+  # instance on the old value.
+  pinned_secret_versions = merge(
+    { for name, v in google_secret_manager_secret_version.third_party : name => v.version },
+    {
+      "db-connection-string" = google_secret_manager_secret_version.db_connection_string.version
+      "jwt-token-key"        = google_secret_manager_secret_version.jwt_token_key.version
+    },
+  )
 }
 
 resource "google_cloud_run_v2_service" "app" {
@@ -117,7 +119,7 @@ resource "google_cloud_run_v2_service" "app" {
           value_source {
             secret_key_ref {
               secret  = google_secret_manager_secret.app[env.key].secret_id
-              version = lookup(local.pinned_secret_versions, env.key, "latest")
+              version = local.pinned_secret_versions[env.key]
             }
           }
         }
@@ -140,7 +142,7 @@ resource "google_cloud_run_v2_service" "app" {
   depends_on = [
     google_project_iam_member.runtime_cloudsql,
     google_secret_manager_secret_iam_member.runtime,
-    google_secret_manager_secret_version.placeholder,
+    google_secret_manager_secret_version.third_party,
     google_secret_manager_secret_version.jwt_token_key,
     google_secret_manager_secret_version.db_connection_string,
   ]

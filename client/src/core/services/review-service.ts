@@ -14,7 +14,8 @@ export class ReviewService {
   }
 
   getReviewByOrder(orderId: number) {
-    return this.http.get<Review>(this.baseUrl + `reviews/order/${orderId}`);
+    // 204 (body null) when the order hasn't been reviewed yet
+    return this.http.get<Review | null>(this.baseUrl + `reviews/order/${orderId}`);
   }
 
   getReviewsForCook(cookId: number, pageNumber = 1, pageSize = 5) {

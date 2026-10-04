@@ -7,6 +7,11 @@ output "site_url" {
   value = local.site_url
 }
 
+output "stripe_webhook_url" {
+  description = "Endpoint to register in the Stripe dashboard; its signing secret is third_party_secrets[\"stripe-webhook-secret\"]."
+  value       = "${local.public_url}/api/payments/webhook"
+}
+
 output "dns_name_servers" {
   description = "Set these as the nameservers at your domain registrar."
   value       = google_dns_managed_zone.main.name_servers

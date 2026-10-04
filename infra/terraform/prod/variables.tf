@@ -43,6 +43,29 @@ variable "cloudinary_cloud_name" {
   type        = string
 }
 
+variable "third_party_secrets" {
+  description = "Cloudinary and Stripe credentials, keyed by secret name (see terraform.tfvars.example). Ephemeral: never written to state or plan files, so Terraform can't see when they change; bump third_party_secrets_version after editing them."
+  type        = map(string)
+  sensitive   = true
+  ephemeral   = true
+
+  validation {
+    condition     = toset(keys(var.third_party_secrets)) == local.third_party_secrets
+    error_message = "third_party_secrets needs exactly these keys: cloudinary-api-key, cloudinary-api-secret, stripe-secret-key, stripe-webhook-secret."
+  }
+
+  validation {
+    condition     = alltrue([for v in values(var.third_party_secrets) : trimspace(v) != ""])
+    error_message = "third_party_secrets values must not be empty."
+  }
+}
+
+variable "third_party_secrets_version" {
+  description = "Bump to publish changed third_party_secrets values as new secret versions."
+  type        = number
+  default     = 1
+}
+
 # ── Database ──────────────────────────────────────────────────────────────────
 
 variable "db_tier" {

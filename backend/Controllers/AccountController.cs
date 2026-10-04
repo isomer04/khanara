@@ -50,8 +50,16 @@ public class AccountController(
         var result = await userManager.CreateAsync(user, registerDto.Password);
         if (!result.Succeeded)
         {
-            foreach (var error in result.Errors)
-                ModelState.AddModelError("identity", error.Description);
+            // UserName is the email, so a taken email reports both duplicate errors;
+            // show one, worded in terms of what the user typed.
+            var messages = result.Errors
+                .Select(e => e.Code is nameof(IdentityErrorDescriber.DuplicateUserName)
+                        or nameof(IdentityErrorDescriber.DuplicateEmail)
+                    ? "An account with this email already exists."
+                    : e.Description)
+                .Distinct();
+            foreach (var message in messages)
+                ModelState.AddModelError("identity", message);
             return ValidationProblem();
         }
 

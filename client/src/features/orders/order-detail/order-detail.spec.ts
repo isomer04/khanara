@@ -48,6 +48,9 @@ describe('OrderDetail', () => {
     mockToastService = createMockToastService();
     
     mockOrderHubService = {
+      connectionState: signal('connected'),
+      connectionRestored$: new Subject<void>(),
+      retry: vi.fn(),
       connect: vi.fn(),
       disconnect: vi.fn(),
       joinOrder: vi.fn(),
@@ -91,6 +94,34 @@ describe('OrderDetail', () => {
     expect(component).toBeTruthy();
   });
 
+  it('reloads restored data without overwriting a newer live status', () => {
+    fixture.detectChanges();
+    const pending = new Subject<any>();
+    mockOrderService.getOrder.mockReturnValue(pending);
+    mockOrderHubService.connectionRestored$.next();
+    statusChangedSubject.next({ orderId: 1, newStatus: 'Delivered' });
+    pending.next(buildOrder({ id: 1, status: OrderStatus.Pending }));
+    expect(component['order']()?.status).toBe(OrderStatus.Delivered);
+  });
+
+  it('cancels a pending reload on navigation away', () => {
+    const pending = new Subject<any>();
+    mockOrderService.getOrder.mockReturnValue(pending);
+    fixture.detectChanges();
+    fixture.destroy();
+    expect(pending.observed).toBe(false);
+  });
+
+  it('offers a manual connection retry after live updates fail', () => {
+    mockOrderHubService.connectionState.set('failed');
+    fixture.detectChanges();
+    const button = Array.from(fixture.nativeElement.querySelectorAll('button'))
+      .find((element: any) => element.textContent.includes('Retry connection')) as HTMLButtonElement;
+    expect(button).toBeTruthy();
+    button.click();
+    expect(mockOrderHubService.retry).toHaveBeenCalledTimes(1);
+  });
+
   describe('initialization', () => {
     it('should load order on init', () => {
       const mockOrder = buildOrder({ id: 1 });
@@ -114,7 +145,7 @@ describe('OrderDetail', () => {
 
       fixture.detectChanges();
 
-      expect(mockToastService.error).toHaveBeenCalledWith('Order not found');
+      expect(mockToastService.error).toHaveBeenCalledWith('Could not load order');
     });
 
     it('should extract order id from route params', () => {

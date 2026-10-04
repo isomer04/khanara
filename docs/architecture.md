@@ -2,6 +2,13 @@
 
 Khanara is a full-stack web application with three main layers: an Angular SPA, an ASP.NET Core REST API, and a PostgreSQL database (Docker container in development, Cloud SQL on Google Cloud in production). Integration tests swap in an in-memory SQLite database.
 
+Production consolidates the SPA, API and SignalR into one Cloud Run container with
+request-based billing and min 0 / max 1 configured instances. Cloud SQL retains
+durable marketplace state. The runtime uses `.NET 10 noble-chiseled-extra`; scheduled
+production jobs run through authenticated HTTP requests instead of idle timers.
+See the [ADRs](adr/README.md) for rationale and alternatives, and the
+[cost-optimization plan](plans/reduce-hosting-costs.md) for implementation and validation.
+
 ```
 ┌─────────────────────────────────┐
 │         Angular SPA             │  https://localhost:5444
@@ -50,9 +57,14 @@ PostgreSQL           → Persistent storage
 - `StripeService` — checkout session, refund, session expiry
 - `OrderNotificationService` — scoped SignalR broadcaster (called from controllers)
 
-**Background services** run independently of the request pipeline:
+**Background services** run independently of requests when `Jobs:RunInProcess=true`
+(local development and always-on hosts):
 - `AbandonedOrderCleanupService`
 - `DailyPortionsResetService`
+
+Production sets that option to `false`: Cloud Scheduler calls authenticated
+`/api/jobs/*` endpoints, which await the shared job logic before responding. This
+allows request-based CPU allocation without relying on background timers.
 
 ### Backend project layout
 
@@ -110,6 +122,13 @@ backend/
 - `OrderPresenceTracker` (singleton) tracks which users are viewing which order.
 - `OrderNotificationService` (scoped, called from controllers) broadcasts status changes and new messages to the relevant group.
 - The Angular `OrderHubService` wraps the SignalR client and exposes observables.
+
+The service also exposes connection state and a restoration event. Hidden tabs
+pause their connection after a 30-second grace period; returning reconnects and
+rejoins the order before REST reloads missed status and messages. Drafts survive,
+messages are deduplicated by ID, and presence is cleared while disconnected.
+Initial starts use two bounded retries and failures offer manual recovery; navigation
+away cancels recovery and disconnects. See [ADR 0002](adr/0002-pause-hidden-tab-connections-and-bound-retries.md).
 
 ---
 

@@ -1,6 +1,10 @@
 # Khanara on Google Cloud: Deployment Plan
 
-**Verdict: yes, Khanara fits comfortably on GCP.** The recommended setup runs for about **$10–11 a month**. The $300 free-trial credit covers the whole 90-day trial with about $270 left over, and the monthly cost stays small after the trial.
+**Verdict: yes, Khanara fits on GCP.** The original planning estimate was **$10–11 a month**. That figure and the trial-credit calculations below are historical estimates, not verified current pricing or measured savings. Cloud SQL and other supporting services retain ongoing costs. See [deployment.md](deployment.md#cost-and-cold-start-behavior) for the implemented cost optimizations and measured image sizes.
+
+The subsequent [cost-optimization plan](plans/reduce-hosting-costs.md) records the
+implemented changes, while [ADRs 0001–0003](adr/README.md) explain the accepted
+storage, billing, connection lifecycle and runtime-image decisions.
 
 - **Domain:** `khanara.shop` (verified through the khanara.shop Cloud Identity account)
 - **Region:** `us-central1`
@@ -86,7 +90,7 @@ flowchart LR
 For comparison: keeping SQL Server and an always-on instance would cost about **$95–100/month**. That would use up the whole $300 in the trial's 90 days.
 
 > **Cost watch-outs**
-> - An open SignalR WebSocket counts as an active request, and Cloud Run bills while it's open (about $0.09/hour beyond the free tier). This PR makes the order pages close the socket when you leave them. The budget alert is the backstop.
+> - An open SignalR WebSocket counts as an active request, and Cloud Run bills while it is open. Order pages close sockets on exit and pause them after 30 continuous seconds hidden; returning restores missed updates. See [ADR 0002](adr/0002-pause-hidden-tab-connections-and-bound-retries.md). Historical hourly figures are not current billing guarantees.
 > - The `EXCLUDE_ALL_CREDITS` budget shows the real run rate even while the credit pays. Without it, alerts would never fire during the trial.
 
 ---
@@ -101,9 +105,9 @@ For comparison: keeping SQL Server and an always-on instance would cost about **
 | **Job auth** | New `SchedulerOidc` JWT scheme validates Google-signed tokens: issuer `accounts.google.com`, audience `https://khanara.shop/api/jobs`. The `SchedulerJob` policy also pins `email` to the scheduler service account with `email_verified`. App user JWTs are rejected |
 | **Once-a-day reset** | New `JobRuns` table. The reset claims the day inside a transaction, so Scheduler retries, duplicate deliveries or manual runs can't hand back portions that were already sold. The old in-memory guard didn't survive restarts |
 | **Hosting** | `/health` endpoint (not `/healthz`: Cloud Run reserves paths ending in `z`); `AllowedHosts` no longer pinned to the Azure host; `www` → apex redirect; migration failure is fatal outside Development, so a broken revision never takes traffic; startup check that the jobs config is present when timers are off |
-| **Client** | Order detail and order chat pages close the SignalR connection on exit (cost, see §4) |
+| **Client** | Order pages disconnect on exit, pause hidden-tab sockets after 30 seconds, reconcile missed data on return and bound safe-read/initial-connection retries; see [ADR 0002](adr/0002-pause-hidden-tab-connections-and-bound-retries.md) |
 | **Local dev** | `docker-compose.yml` now runs `postgres:17` on port 5433 (`POSTGRES_PASSWORD` in `.env`) |
-| **Packaging** | Root `Dockerfile` (Node 24 → .NET 10 SDK → ASP.NET runtime, non-root, port 8080) and `.dockerignore`, which keeps `appsettings.Development.json`, `publish/` and `.env*` out of the image |
+| **Packaging** | Root `Dockerfile` (Node 24 → .NET 10 SDK → ASP.NET noble-chiseled-extra runtime, non-root, port 8080) and `.dockerignore`; see [ADR 0003](adr/0003-use-chiseled-extra-runtime-image.md) for the runtime choice and measured size comparison |
 | **CI/CD** | `deploy-gcp.yml` runs after CI passes on a push to `main`: WIF auth → build and push → `gcloud run deploy --image` → `/health` smoke test. It is skipped until the GitHub variables exist. The old Azure workflow stays disabled |
 
 Forwarded headers are turned on through `ASPNETCORE_FORWARDEDHEADERS_ENABLED=true`, set in Terraform. The auth rate limiter then partitions by the real client IP instead of Google's front end, and HSTS is emitted.
@@ -257,7 +261,7 @@ Merge this PR. CI runs, then **Deploy to Cloud Run** builds the image and rolls 
 
 **Risks and limitations**
 - **Domain mappings are in preview:** there's some added latency, and TLS 1.0/1.1 can't be disabled. If that becomes a problem, add a global HTTPS load balancer with a serverless NEG (~$18/month).
-- **Cold starts:** after idle time the first request takes about 3–8 s, and Stripe webhooks can hit one (Stripe retries). The 15-minute cleanup job keeps the instance warm most of the time. Setting `min_instance_count = 1` removes cold starts for a few dollars a month.
+- **Cold starts:** idle scale-down can delay the first request, including a Stripe webhook. The 15-minute cleanup job wakes the service but does not guarantee a warm instance. Safe-read and initial-connection retries improve recovery; the initial HTML response still waits for startup. No startup-latency improvement or current warm-instance price was measured. See [ADR 0001](adr/0001-retain-durable-storage-and-request-based-billing.md).
 - **`db-f1-micro`:** a shared core, 25 connections (the app caps its pool at 10), and no SLA.
 - **Max 1 instance:** scaling out needs a SignalR backplane and migrations moved out of startup.
 

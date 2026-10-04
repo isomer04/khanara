@@ -101,7 +101,9 @@ cd backend/Khanara.API.Tests && dotnet test
 
 ## Deployment
 
-**Live on Google Cloud at [khanara-940992710588.us-central1.run.app](https://khanara-940992710588.us-central1.run.app)** (custom domain [khanara.shop](https://khanara.shop) coming soon). One Cloud Run container (API + SPA) that scales to zero, Cloud SQL for PostgreSQL, Secret Manager, Cloud Scheduler for the background jobs, and Cloud DNS. All of it is defined in Terraform under [`infra/terraform/`](infra/terraform). It costs about $10–15/month, so the $300 free-trial credit covers the whole trial. See the [GCP deployment plan](docs/gcp-deployment-plan.md) for the architecture, costs and runbook.
+**Live on Google Cloud at [khanara-940992710588.us-central1.run.app](https://khanara-940992710588.us-central1.run.app)** (custom domain [khanara.shop](https://khanara.shop) coming soon). One Cloud Run container (API + SPA) uses request-based billing and scales to zero, with Cloud SQL for PostgreSQL, Secret Manager, Cloud Scheduler for background jobs, and Cloud DNS. Infrastructure is defined in [`infra/terraform/`](infra/terraform). Cloud SQL and supporting services retain ongoing costs; figures in the [GCP deployment plan](docs/gcp-deployment-plan.md) are historical planning estimates, not a current bill or guaranteed savings.
+
+The cost-optimization changes use a smaller .NET runtime, pause order/chat connections after 30 seconds in a hidden tab, and add bounded retries for safe reads and initial live connections. Returning to a tab restores missed updates and preserves drafts. Docker reported **432 MB → 329 MB** for baseline and optimized local image storage (~24% less); monthly savings and cold-start latency were not measured. See the [implementation plan](docs/plans/reduce-hosting-costs.md) and [ADRs](docs/adr/README.md) for the decisions, tradeoffs and validation.
 
 When CI passes on `main`, [`deploy-gcp.yml`](.github/workflows/deploy-gcp.yml) builds the Docker image, pushes it to Artifact Registry and rolls out a new revision. It authenticates through **Workload Identity Federation**, so no service-account keys are stored. See [docs/deployment.md](docs/deployment.md) for environment variables, Stripe webhooks and the security checklist.
 
@@ -125,6 +127,8 @@ Before moving to Google Cloud, the app ran at `khanara.azurewebsites.net` on **A
 | [docs/configuration.md](docs/configuration.md) | All config keys, environment variables, and secrets |
 | [docs/api-reference.md](docs/api-reference.md) | Endpoint reference, auth, roles, pagination, error shapes |
 | [docs/architecture.md](docs/architecture.md) | System diagram, layer structure, auth flow, domain entities |
+| [docs/adr/README.md](docs/adr/README.md) | Accepted architecture decisions, alternatives, consequences and revisit criteria |
+| [docs/plans/reduce-hosting-costs.md](docs/plans/reduce-hosting-costs.md) | Cost-optimization implementation plan, validation evidence and rollout |
 | [docs/gcp-deployment-plan.md](docs/gcp-deployment-plan.md) | Google Cloud architecture, costs, Terraform layout, first-time runbook |
 | [docs/deployment.md](docs/deployment.md) | Production build, database migration, Stripe webhooks, security checklist |
 | [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) | Branching, commit style, PR guidelines, code standards |
@@ -139,7 +143,8 @@ khanara/
 ├── backend/              # ASP.NET Core API (Controllers, Data, Services, SignalR)
 │   └── Khanara.API.Tests/# xUnit tests (unit, integration, concurrency)
 ├── client/               # Angular SPA (features, core, shared, types)
-├── docs/                 # Guides: config, API, architecture, deployment, contributing
+├── docs/                 # Guides, architecture decisions (adr/), implementation plans (plans/)
+├── scripts/              # Isolated production-container smoke check
 ├── infra/terraform/      # GCP infrastructure (bootstrap + prod stacks)
 ├── Dockerfile            # Angular build → .NET publish → runtime image
 ├── LICENSE

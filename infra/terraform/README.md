@@ -2,6 +2,12 @@
 
 The architecture, costs, decisions and the full first-time runbook are in [docs/gcp-deployment-plan.md](../../docs/gcp-deployment-plan.md). This file is the short version.
 
+The [cost-optimization plan](../../docs/plans/reduce-hosting-costs.md) and
+[ADRs](../../docs/adr/README.md) document why Cloud SQL and request-based Cloud Run
+billing are retained. Image and client-connection optimizations require no Terraform
+apply. Cloud SQL and supporting services still have ongoing costs; the original
+runbook's monthly figures are historical estimates.
+
 | Stack | State | Creates |
 |---|---|---|
 | [`bootstrap/`](bootstrap) | local (`terraform.tfstate`, back it up) | base APIs and the versioned GCS bucket for remote state; optionally the project |

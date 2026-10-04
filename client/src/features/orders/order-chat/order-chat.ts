@@ -1,4 +1,4 @@
-import { Component, inject, OnDestroy, OnInit, signal } from '@angular/core';
+import { Component, effect, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
@@ -9,10 +9,11 @@ import { AccountService } from '../../../core/services/account-service';
 import { ToastService } from '../../../core/services/toast-service';
 import { OrderMessage, OrderPresence } from '../../../types/message';
 import { OrderStatus } from '../../../types/order';
+import { OrderConnectionStatus } from '../../../shared/order-connection-status/order-connection-status';
 
 @Component({
   selector: 'app-order-chat',
-  imports: [RouterLink, FormsModule, DatePipe],
+  imports: [RouterLink, FormsModule, DatePipe, OrderConnectionStatus],
   templateUrl: './order-chat.html',
 })
 export class OrderChat implements OnInit, OnDestroy {
@@ -30,6 +31,15 @@ export class OrderChat implements OnInit, OnDestroy {
   protected isClosed = signal(false);
 
   private subs: Subscription[] = [];
+  private historyLoad?: Subscription;
+  private orderLoad?: Subscription;
+  private statusVersion = 0;
+
+  constructor() {
+    effect(() => {
+      if (this.hub.connectionState() !== 'connected') this.presence.set(null);
+    });
+  }
 
   get currentUserId() {
     return this.accountService.currentUser()?.id ?? '';
@@ -38,11 +48,7 @@ export class OrderChat implements OnInit, OnDestroy {
   ngOnInit() {
     this.orderId = Number(this.route.snapshot.paramMap.get('id'));
 
-    // Load message history via REST
-    this.orderService.getMessages(this.orderId).subscribe({
-      next: (msgs) => this.messages.set(msgs),
-      error: () => this.toast.error('Could not load messages'),
-    });
+    this.loadCurrentData();
 
     // Connect to hub for real-time updates (presence, status, incoming messages)
     this.hub.connect();
@@ -56,6 +62,7 @@ export class OrderChat implements OnInit, OnDestroy {
       }),
       this.hub.statusChanged$.subscribe((data) => {
         if (data.orderId === this.orderId) {
+          this.statusVersion++;
           const closed =
             data.newStatus === OrderStatus[OrderStatus.Delivered] ||
             data.newStatus === OrderStatus[OrderStatus.Cancelled];
@@ -64,7 +71,30 @@ export class OrderChat implements OnInit, OnDestroy {
       })
     );
 
+    this.subs.push(this.hub.connectionRestored$.subscribe(() => this.loadCurrentData()));
+
     this.hub.joinOrder(this.orderId);
+  }
+
+  private loadCurrentData() {
+    this.historyLoad?.unsubscribe();
+    this.orderLoad?.unsubscribe();
+    this.historyLoad = this.orderService.getMessages(this.orderId).subscribe({
+      next: msgs => this.messages.update(current => {
+        const merged = new Map([...msgs, ...current].map(message => [message.id, message]));
+        return [...merged.values()].sort((a, b) => a.sentAt.localeCompare(b.sentAt) || a.id - b.id);
+      }),
+      error: () => this.toast.error('Could not load messages'),
+    });
+    const version = this.statusVersion;
+    this.orderLoad = this.orderService.getOrder(this.orderId).subscribe({
+      next: order => {
+        if (version === this.statusVersion) {
+          this.isClosed.set(order.status === OrderStatus.Delivered || order.status === OrderStatus.Cancelled);
+        }
+      },
+      error: () => this.toast.error('Could not load order'),
+    });
   }
 
   ngOnDestroy() {
@@ -74,6 +104,8 @@ export class OrderChat implements OnInit, OnDestroy {
     this.hub.leaveOrder(this.orderId)?.catch(() => {});
     this.hub.disconnect();
     this.subs.forEach((s) => s.unsubscribe());
+    this.historyLoad?.unsubscribe();
+    this.orderLoad?.unsubscribe();
   }
 
   private addMessage(message: OrderMessage) {

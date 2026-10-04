@@ -21,9 +21,9 @@ COPY --from=client /src/backend/wwwroot ./wwwroot
 RUN dotnet publish Khanara.API.csproj -c Release -o /app/publish --no-restore /p:UseAppHost=false
 
 # ── 3. Runtime ────────────────────────────────────────────────────────────────
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled-extra AS runtime
 WORKDIR /app
-COPY --from=build /app/publish ./
+COPY --from=build --chown=$APP_UID:$APP_UID /app/publish ./
 # Non-root user built into the .NET images; Cloud Run sends traffic to 8080.
 USER $APP_UID
 ENV ASPNETCORE_HTTP_PORTS=8080

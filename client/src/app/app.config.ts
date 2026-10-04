@@ -21,6 +21,7 @@ import { lastValueFrom } from 'rxjs';
 import { errorInterceptor } from '../core/interceptors/error-interceptor';
 import { jwtInterceptor } from '../core/interceptors/jwt-interceptor';
 import { loadingInterceptor } from '../core/interceptors/loading-interceptor';
+import { readRetryInterceptor } from '../core/interceptors/read-retry-interceptor';
 import { environment } from '../environments/environment';
 
 /**
@@ -64,7 +65,7 @@ export const appConfig: ApplicationConfig = {
     // Use the Fetch API backend — smaller, faster, supports streaming
     provideHttpClient(
       withFetch(),
-      withInterceptors([errorInterceptor, jwtInterceptor, loadingInterceptor]),
+      withInterceptors([errorInterceptor, jwtInterceptor, loadingInterceptor, readRetryInterceptor]),
     ),
     // NgOptimizedImage loader — swap for provideCloudinaryLoader() later
     {

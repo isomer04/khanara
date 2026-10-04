@@ -29,9 +29,53 @@
 
 ## Build locally
 
+The runtime uses `.NET 10 noble-chiseled-extra`, retaining ICU and timezone data
+while removing unused operating-system packages. Published files are owned by the
+non-root runtime user. There is no shell in this image; use container logs and
+external HTTP checks for diagnosis.
+
 ```bash
 docker build -t khanara:local .
 ```
+
+### Cost and cold-start behavior
+
+The [saved implementation plan](plans/reduce-hosting-costs.md) records the agreed
+changes and validation. The [ADRs](adr/README.md) explain the storage/billing,
+connection lifecycle and runtime-image decisions.
+
+- Cloud Run retains min 0 / max 1 instances and request-based billing. Cloud SQL
+  retains durable accounts, orders, payments and messages, and still has ongoing costs.
+- Order/chat sockets pause after 30 continuous seconds in a hidden tab. Returning
+  reconnects, rejoins the order and reloads missed status/messages without clearing
+  drafts. Navigation away disconnects immediately. A visible order tab still holds
+  an active request; other tabs and Scheduler requests can also keep the service active.
+- API GETs retry network failures and HTTP 502/503/504 twice, after 1 and 3 seconds.
+  Initial SignalR starts use the same bounded delays; established connections retain
+  SignalR automatic reconnect. Failed live connections expose a manual retry button.
+  Checkout, order/message writes and token refresh are never automatically replayed.
+- The initial HTML comes from the same container, so in-app loading indicators only
+  appear after that response arrives; they cannot cover the first document cold start.
+
+On 2026-10-04, identical application builds using the previous and new runtime bases
+reported **432 MB and 329 MB** respectively in `docker image ls` (about 24% less local
+image storage). This measures Docker's local storage, not monthly savings,
+registry billing, or cold-start latency.
+
+After building, run the isolated production-container check with:
+
+```bash
+node scripts/smoke-container.mjs khanara:local
+```
+
+It uses PostgreSQL 17 and dummy third-party credentials, checks startup migrations,
+SPA routes/assets, registration/login, an authenticated WebSocket handshake and
+restart persistence, then removes its own temporary containers and network. Install
+client dependencies first; Docker must be available. It does not call Stripe or Cloudinary.
+
+Deploy the validated image through the existing GitHub Actions release workflow.
+This change needs no Terraform apply or database migration. Roll back by deploying
+the previous image revision if production smoke checks fail.
 
 The image serves the API and the Angular SPA on port 8080. Without Docker:
 

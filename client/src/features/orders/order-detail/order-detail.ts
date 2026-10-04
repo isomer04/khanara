@@ -9,10 +9,11 @@ import { ToastService } from '../../../core/services/toast-service';
 import { OrderHubService } from '../../../core/services/order-hub-service';
 import { Order, OrderStatus, OrderStatusLabels, FulfillmentType, PaymentMethod, PaymentStatus } from '../../../types/order';
 import { ReviewCard } from '../../reviews/review-card/review-card';
+import { OrderConnectionStatus } from '../../../shared/order-connection-status/order-connection-status';
 
 @Component({
   selector: 'app-order-detail',
-  imports: [RouterLink, CurrencyPipe, DatePipe, FormsModule, ReviewCard],
+  imports: [RouterLink, CurrencyPipe, DatePipe, FormsModule, ReviewCard, OrderConnectionStatus],
   templateUrl: './order-detail.html',
 })
 export class OrderDetail implements OnInit, OnDestroy {
@@ -36,6 +37,9 @@ export class OrderDetail implements OnInit, OnDestroy {
 
   private orderId = 0;
   private subs: Subscription[] = [];
+  private statusVersion = 0;
+  private latestStatus?: OrderStatus;
+  private reload?: Subscription;
 
   get currentUserId() {
     return this.accountService.currentUser()?.id ?? '';
@@ -77,19 +81,15 @@ export class OrderDetail implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.orderId = Number(this.route.snapshot.paramMap.get('id'));
-    this.loading.set(true);
-    this.orderService.getOrder(this.orderId).pipe(
-      finalize(() => this.loading.set(false))
-    ).subscribe({
-      next: order => this.order.set(order),
-      error: () => this.toast.error('Order not found'),
-    });
+    this.loadOrder();
 
     this.hub.connect();
 
     this.subs.push(
       this.hub.statusChanged$.subscribe((data) => {
         if (data.orderId === this.orderId) {
+          this.statusVersion++;
+          this.latestStatus = OrderStatus[data.newStatus as keyof typeof OrderStatus];
           this.order.update((o) => {
             if (!o) return o;
             return {
@@ -101,7 +101,22 @@ export class OrderDetail implements OnInit, OnDestroy {
       })
     );
 
+    this.subs.push(this.hub.connectionRestored$.subscribe(() => this.loadOrder()));
+
     this.hub.joinOrder(this.orderId);
+  }
+
+  private loadOrder() {
+    this.reload?.unsubscribe();
+    const version = this.statusVersion;
+    this.loading.set(true);
+    this.reload = this.orderService.getOrder(this.orderId).pipe(
+      finalize(() => this.loading.set(false))
+    ).subscribe({
+      next: order => this.order.set(version !== this.statusVersion && this.latestStatus !== undefined
+        ? { ...order, status: this.latestStatus } : order),
+      error: () => this.toast.error('Could not load order'),
+    });
   }
 
   ngOnDestroy() {
@@ -111,6 +126,7 @@ export class OrderDetail implements OnInit, OnDestroy {
     this.hub.leaveOrder(this.orderId)?.catch(() => {});
     this.hub.disconnect();
     this.subs.forEach((s) => s.unsubscribe());
+    this.reload?.unsubscribe();
   }
 
   advanceStatus() {
